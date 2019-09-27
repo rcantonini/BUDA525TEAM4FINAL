@@ -1,0 +1,120 @@
+---
+title: 'BUDA 525: Team 4 Final Project'
+author: "Ryan Antonini, Danny Germain, Joshua Meadows, Josh Nelson, Bill Robertson"
+date: "9/27/2019"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1
+
+
+
+# Problem 2
+
+
+
+# Problem 3
+
+```{r, echo=FALSE}
+library(ISLR)
+library(effects)
+library(car)
+head(Credit)
+summary(Credit)
+```
+
+```{r,echo=FALSE}
+Credit$cardsF <-as.factor(Credit$Cards)
+mod3_1 <- lm(Balance~ID+Income+Limit+Rating+cardsF+Education+Gender+Student+Married+Ethnicity,data=Credit)
+#We start by fitting a model with all predictors to find out how to procede
+summary(mod3_1)
+```
+
+```{r,echo=FALSE}
+mod3_2 <- lm(Balance~ID+Income+Limit+Rating+cardsF+Education+Student+Married,data=Credit)
+#Next we fit a model without Gender and Ethnicity since we don't want to use them, and compare them to the model with all predictors
+summary(mod3_2)
+anova(mod3_1,mod3_2)
+```
+
+```{r,echo=FALSE}
+mod3_3 <- lm(Balance~Income+Limit+Rating+cardsF+Student,data=Credit)
+summary(mod3_3)
+anova(mod3_1,mod3_3)
+#testing to see if we need Education and Married
+```
+
+```{r}
+plot(mod3_3)
+avPlots(mod3_3)
+plot(allEffects(mod3_3))
+#Running Diagnostics
+```
+
+There is some serious NCV that needs delt with, coming from entries where Balance=0
+
+```{r}
+Credit2<- Credit[Credit$Balance!=0,]
+mod3_4 <- lm(Balance~Income+Limit+cardsF+Student,data=Credit2)
+summary(mod3_4)
+```
+
+```{r}
+plot(mod3_4)
+avPlots(mod3_4)
+plot(allEffects(mod3_4))
+ncvTest(mod3_4)
+#Running Diagnostics
+```
+
+By removing the 90 cases where balance is zero, we can do an extremely good job at prediciting balance with only 4 predictors. Next, we create a new variable that reports whether or not the person has a balance, and use this variable as a response in a Logistic Regression model.
+
+```{r}
+Credit3<-Credit
+Credit3$BalanceF<- as.factor(Credit3$Balance>0)
+mod3_5<- glm(BalanceF~Limit+Student+Rating+cardsF+Age+Education+Gender+Married+Ethnicity+Income+ID,family = "binomial",data=Credit3)
+summary(mod3_5)
+mod3_6<-stepAIC(mod3_5)
+summary(mod3_6)
+mod3_7<- glm(BalanceF~Limit+Student,family = "binomial",data=Credit3)
+summary(mod3_7)
+```
+
+```{r}
+Credit3$Predict <- ifelse(mod3_6$fitted.values >0.5,"TRUE","FALSE")
+mytable <- table(Credit3$BalanceF,Credit3$Predict)
+print(mytable)
+efficiency <- sum(diag(mytable))/sum(mytable)
+efficiency
+
+Credit3$Predict <- ifelse(mod3_7$fitted.values >0.5,"TRUE","FALSE")
+mytable <- table(Credit3$BalanceF,Credit3$Predict)
+print(mytable)
+efficiency <- sum(diag(mytable))/sum(mytable)
+efficiency
+```
+
+While Model 3_6 uses the fewest predictors to still have 100% effeciency (meaning it predicts correctly in all cases), none of the individual coeffeicients is significant. For this reason, I prefer Model 3_7 which has 96% efficiency using only two predictors, each of which is significant. We can now use Model 3_7 to predict whether or not.
+
+# Problem 4
+
+```{r}
+library(carData)
+head(Salaries)
+summary(Salaries)
+```
+
+```{r}
+mod4_1<-lm(salary~rank+discipline+yrs.since.phd+yrs.service+sex, data=Salaries)
+summary(mod4_1)
+```
+
+```{r}
+plot(mod4_1)
+avPlots(mod4_1)
+plot(allEffects(mod4_1))
+```
