@@ -93,7 +93,7 @@ efficiency <- sum(diag(mytable))/sum(mytable)
 efficiency
 ```
 
-Model 3_6 predicts correctly 97 percent of the time whether or not the balance is zero. We can now use Model 3_6 to predict whether or not the balance is zero, then predict the value of the balance, when appropriate, using Model 3_4. (This method can be further improved by using a generalized linear model with a binomial distribution instead of a linear one but that is outside the scope of this class).
+Model 3_6 predicts correctly 97 percent of the time whether or not the balance is zero. We can now use Model 3_6 to predict whether or not the balance is zero, then predict the value of the balance, when appropriate, using Model 3_4. (This method can be further improved by using a generalized linear model with a binomial distribution instead of a normal one but that is outside the scope of this class).
 
 # Problem 4
 
