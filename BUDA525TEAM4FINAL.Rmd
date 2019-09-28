@@ -71,34 +71,29 @@ ncvTest(mod3_4)
 #Running Diagnostics
 ```
 
-By removing the 90 cases where balance is zero, we can do an extremely good job at prediciting balance with only 4 predictors. Next, we create a new variable that reports whether or not the person has a balance, and use this variable as a response in a Logistic Regression model.
+By removing the 90 cases where balance is zero, we can do an extremely good job at prediciting balance with only 4 predictors. Next, we create a new variable that reports whether or not the person has a balance, and use this variable as a response.
 
 ```{r}
+library(car)
 Credit3<-Credit
-Credit3$BalanceF<- as.factor(Credit3$Balance>0)
-mod3_5<- glm(BalanceF~Limit+Student+Rating+cardsF+Age+Education+Gender+Married+Ethnicity+Income+ID,family = "binomial",data=Credit3)
+Credit3$BalanceF<- as.numeric(Credit3$Balance>0)
+mod3_5<- lm(BalanceF~Limit+Student+Rating+cardsF+Age+Education+Gender+Married+Ethnicity+Income+ID,data=Credit3)
 summary(mod3_5)
-mod3_6<-stepAIC(mod3_5)
+Anova(mod3_5,type=2)
+mod3_6<-lm(BalanceF~Limit+Student+Income,data=Credit3)
 summary(mod3_6)
-mod3_7<- glm(BalanceF~Limit+Student,family = "binomial",data=Credit3)
-summary(mod3_7)
 ```
 
 ```{r}
-Credit3$Predict <- ifelse(mod3_6$fitted.values >0.5,"TRUE","FALSE")
-mytable <- table(Credit3$BalanceF,Credit3$Predict)
-print(mytable)
-efficiency <- sum(diag(mytable))/sum(mytable)
-efficiency
-
-Credit3$Predict <- ifelse(mod3_7$fitted.values >0.5,"TRUE","FALSE")
+#testing goodness of fit. Needs to be updated to cross-fold validation
+Credit3$Predict <- ifelse(mod3_6$fitted.values >0.5,"1","0")
 mytable <- table(Credit3$BalanceF,Credit3$Predict)
 print(mytable)
 efficiency <- sum(diag(mytable))/sum(mytable)
 efficiency
 ```
 
-While Model 3_6 uses the fewest predictors to still have 100% effeciency (meaning it predicts correctly in all cases), none of the individual coeffeicients is significant. For this reason, I prefer Model 3_7 which has 96% efficiency using only two predictors, each of which is significant. We can now use Model 3_7 to predict whether or not.
+Model 3_6 predicts correctly 97 percent of the time whether or not the balance is zero. We can now use Model 3_6 to predict whether or not the balance is zero, then predict the value of the balance, when appropriate, using Model 3_4. (This method can be further improved by using a generalized linear model with a binomial distribution instead of a linear one but that is outside the scope of this class).
 
 # Problem 4
 
