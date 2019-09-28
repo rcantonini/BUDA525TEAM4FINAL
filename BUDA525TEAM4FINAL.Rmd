@@ -119,7 +119,6 @@ foreach(i=1:1000,.combine="+",.options.RNG=623)%dopar% {
 	Predict <- predict(M1,newdata=Credit3[-set,])
 	myPredict<- ifelse(Predict >0.5,"1","0")
 	mytable <- table(Credit3[-set,]$BalanceF,myPredict)
-	print(mytable)
 	eff<-sum(diag(mytable))/sum(mytable)
 	return(eff)
 }
@@ -128,6 +127,21 @@ stopCluster(cl)
 ```
 
 Model 3_7 predicts correctly 97.8 percent of the time whether or not the balance is zero, while model 3_6 predicts correctly only 96.2 percent of the time. We can now use Model 3_7 to predict whether or not the balance is zero, then predict the value of the balance, when appropriate, using Model 3_4. (This method can be further improved by using a generalized linear model with a binomial distribution instead of a normal one but that is outside the scope of this class).
+
+We can combine these two models in the following way to make them one model, but it becomes harder to interpret.
+
+```{r}
+mod3_8<-step(lm(Balance~(Student*Limit*Income)*(log(Rating)+cardsF+Student+Limit+Income),data=Credit3))
+summary(mod3_8)
+```
+
+```{r}
+plot(mod3_8)
+avPlots(mod3_8)
+plot(allEffects(mod3_8))
+ncvTest(mod3_8)
+#Running Diagnostics
+```
 
 # Problem 4
 
