@@ -81,22 +81,29 @@ mod3_5<- lm(BalanceF~Limit+Student+Rating+cardsF+Age+Education+Gender+Married+Et
 summary(mod3_5)
 mod3_6<-step(mod3_5)
 summary(mod3_6)
+```
+
+We have found the optimal factors to use. Next we see if the interactions between these factors can help us.
+
+```{r}
 mod3_7<-step(lm(BalanceF~Student*Limit*Income,data=Credit3))
 summary(mod3_7)
 ```
 
+Since these models are not being used like normal linear model, we use random splitting to test which one most effeciently predicts when the balance will be zero.
+
 ```{r}
-#testing goodness of fit. Needs to be updated to cross-fold validation
-#Credit3$Predict <- ifelse(mod3_7$fitted.values >0.5,"1","0")
-#mytable <- table(Credit3$BalanceF,Credit3$Predict)
-#print(mytable)
-#efficiency <- sum(diag(mytable))/sum(mytable)
-#efficiency
+library(doParallel)
+
+mine<-detectCores()
+mine<-min(c(max(c(1,mine-1)),5))
+cl<-makeCluster(mine)
+registerDoParallel(cl)
+getDoParWorkers()
+library(doRNG)
 library(foreach)
-Credit3[Credit3$cardsF==8,]
-Credit3[Credit3$cardsF==9,]
-set.seed(623)
-foreach(i=1:1000,.combine="+")%do% {
+
+foreach(i=1:1000,.combine="+",.options.RNG=623)%dopar% {
   set=sample(1:dim(Credit3)[1],300,replace=FALSE)
 	M1<-lm(BalanceF~Student*Limit+Student*Income+Income*Limit,data=Credit3[set,])
 	Predict <- predict(M1,newdata=Credit3[-set,])
@@ -105,9 +112,21 @@ foreach(i=1:1000,.combine="+")%do% {
 	eff<-sum(diag(mytable))/sum(mytable)
 	return(eff)
 }
+
+foreach(i=1:1000,.combine="+",.options.RNG=623)%dopar% {
+  set=sample(1:dim(Credit3)[1],300,replace=FALSE)
+	M1<-lm(BalanceF~Student+Limit+Income,data=Credit3[set,])
+	Predict <- predict(M1,newdata=Credit3[-set,])
+	myPredict<- ifelse(Predict >0.5,"1","0")
+	mytable <- table(Credit3[-set,]$BalanceF,myPredict)
+	eff<-sum(diag(mytable))/sum(mytable)
+	return(eff)
+}
+
+stopCluster(cl)
 ```
 
-Model 3_6 predicts correctly 97.8 percent of the time whether or not the balance is zero. We can now use Model 3_7 to predict whether or not the balance is zero, then predict the value of the balance, when appropriate, using Model 3_4. (This method can be further improved by using a generalized linear model with a binomial distribution instead of a normal one but that is outside the scope of this class).
+Model 3_7 predicts correctly 97.8 percent of the time whether or not the balance is zero, while model 3_6 predicts correctly only 96.2 percent of the time. We can now use Model 3_7 to predict whether or not the balance is zero, then predict the value of the balance, when appropriate, using Model 3_4. (This method can be further improved by using a generalized linear model with a binomial distribution instead of a normal one but that is outside the scope of this class).
 
 # Problem 4
 
