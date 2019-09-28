@@ -119,6 +119,7 @@ foreach(i=1:1000,.combine="+",.options.RNG=623)%dopar% {
 	Predict <- predict(M1,newdata=Credit3[-set,])
 	myPredict<- ifelse(Predict >0.5,"1","0")
 	mytable <- table(Credit3[-set,]$BalanceF,myPredict)
+	print(mytable)
 	eff<-sum(diag(mytable))/sum(mytable)
 	return(eff)
 }
