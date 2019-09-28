@@ -42,7 +42,7 @@ anova(mod3_1,mod3_2)
 ```
 
 ```{r,echo=FALSE}
-mod3_3 <- lm(Balance~Income+Limit+Rating+cardsF+Student,data=Credit)
+mod3_3 <- step(mod3_2)
 summary(mod3_3)
 anova(mod3_1,mod3_3)
 #testing to see if we need Education and Married
@@ -59,7 +59,7 @@ There is some serious NCV that needs delt with, coming from entries where Balanc
 
 ```{r}
 Credit2<- Credit[Credit$Balance!=0,]
-mod3_4 <- lm(Balance~Income+Limit+cardsF+Student,data=Credit2)
+mod3_4 <- step(lm(Balance~ID+Income+Limit+Rating+cardsF+Education+Gender+Student+Married+Ethnicity,data=Credit2))
 summary(mod3_4)
 ```
 
@@ -71,7 +71,7 @@ ncvTest(mod3_4)
 #Running Diagnostics
 ```
 
-By removing the 90 cases where balance is zero, we can do an extremely good job at prediciting balance with only 4 predictors. Next, we create a new variable that reports whether or not the person has a balance, and use this variable as a response.
+By removing the 90 cases where balance is zero, we can do an extremely good job at prediciting balance with only 5 predictors. Next, we create a new variable that reports whether or not the person has a balance, and use this variable as a response.
 
 ```{r}
 library(car)
@@ -79,21 +79,35 @@ Credit3<-Credit
 Credit3$BalanceF<- as.numeric(Credit3$Balance>0)
 mod3_5<- lm(BalanceF~Limit+Student+Rating+cardsF+Age+Education+Gender+Married+Ethnicity+Income+ID,data=Credit3)
 summary(mod3_5)
-Anova(mod3_5,type=2)
-mod3_6<-lm(BalanceF~Limit+Student+Income,data=Credit3)
+mod3_6<-step(mod3_5)
 summary(mod3_6)
+mod3_7<-step(lm(BalanceF~Student*Limit*Income,data=Credit3))
+summary(mod3_7)
 ```
 
 ```{r}
 #testing goodness of fit. Needs to be updated to cross-fold validation
-Credit3$Predict <- ifelse(mod3_6$fitted.values >0.5,"1","0")
-mytable <- table(Credit3$BalanceF,Credit3$Predict)
-print(mytable)
-efficiency <- sum(diag(mytable))/sum(mytable)
-efficiency
+#Credit3$Predict <- ifelse(mod3_7$fitted.values >0.5,"1","0")
+#mytable <- table(Credit3$BalanceF,Credit3$Predict)
+#print(mytable)
+#efficiency <- sum(diag(mytable))/sum(mytable)
+#efficiency
+library(foreach)
+Credit3[Credit3$cardsF==8,]
+Credit3[Credit3$cardsF==9,]
+set.seed(623)
+foreach(i=1:1000,.combine="+")%do% {
+  set=sample(1:dim(Credit3)[1],300,replace=FALSE)
+	M1<-lm(BalanceF~Student*Limit+Student*Income+Income*Limit,data=Credit3[set,])
+	Predict <- predict(M1,newdata=Credit3[-set,])
+	myPredict<- ifelse(Predict >0.5,"1","0")
+	mytable <- table(Credit3[-set,]$BalanceF,myPredict)
+	eff<-sum(diag(mytable))/sum(mytable)
+	return(eff)
+}
 ```
 
-Model 3_6 predicts correctly 97 percent of the time whether or not the balance is zero. We can now use Model 3_6 to predict whether or not the balance is zero, then predict the value of the balance, when appropriate, using Model 3_4. (This method can be further improved by using a generalized linear model with a binomial distribution instead of a normal one but that is outside the scope of this class).
+Model 3_6 predicts correctly 97.8 percent of the time whether or not the balance is zero. We can now use Model 3_7 to predict whether or not the balance is zero, then predict the value of the balance, when appropriate, using Model 3_4. (This method can be further improved by using a generalized linear model with a binomial distribution instead of a normal one but that is outside the scope of this class).
 
 # Problem 4
 
