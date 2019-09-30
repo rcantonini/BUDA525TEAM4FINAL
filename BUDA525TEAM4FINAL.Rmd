@@ -32,6 +32,7 @@ Credit$cardsF <-as.factor(Credit$Cards)
 mod3_1 <- lm(Balance~ID+Income+Limit+Rating+cardsF+Education+Gender+Student+Married+Ethnicity,data=Credit)
 #We start by fitting a model with all predictors to find out how to procede
 summary(mod3_1)
+#test
 ```
 
 ```{r,echo=FALSE}
