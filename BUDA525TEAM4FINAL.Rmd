@@ -132,18 +132,13 @@ ncvTest(mod3_8)
 
 # Problem 4
 
-```{r chunk4_1,echo=false}
+```{r chunk4_1,echo=FALSE}
 #head(Salaries)
 summary(Salaries)
 ```
 
-```{r}
+```{r chunk4_2, echo=FALSE}
 mod4_1<-lm(salary~rank+discipline+yrs.since.phd+yrs.service+sex, data=Salaries)
 summary(mod4_1)
 ```
 
-```{r}
-plot(mod4_1)
-avPlots(mod4_1)
-plot(allEffects(mod4_1))
-```
