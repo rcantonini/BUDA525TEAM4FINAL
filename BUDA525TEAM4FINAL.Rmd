@@ -7,6 +7,11 @@ output: word_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(ISLR)
+library(effects)
+library(car)
+library(doParallel)
+library(carData)
 ```
 
 # Problem 1
@@ -19,83 +24,73 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Problem 3
 
-```{r, echo=FALSE}
-library(ISLR)
-library(effects)
-library(car)
-head(Credit)
+
+```{r chunk3_1, echo=FALSE}
+#head(Credit)
 summary(Credit)
 ```
 
-```{r,echo=FALSE}
-Credit$cardsF <-as.factor(Credit$Cards)
-mod3_1 <- lm(Balance~ID+Income+Limit+Rating+cardsF+Education+Gender+Student+Married+Ethnicity,data=Credit)
+```{r chunk3_2,echo=FALSE}
+mod3_1 <- lm(Balance~ID+Income+Limit+Rating+Cards+Education+Gender+Student+Married+Ethnicity,data=Credit)
 #We start by fitting a model with all predictors to find out how to procede
 summary(mod3_1)
-#test
 ```
 
-```{r,echo=FALSE}
-mod3_2 <- lm(Balance~ID+Income+Limit+Rating+cardsF+Education+Student+Married,data=Credit)
+```{r chunk3_3,echo=FALSE}
+mod3_2 <- lm(Balance~ID+Income+Limit+Rating+Cards+Education+Student+Married,data=Credit)
 #Next we fit a model without Gender and Ethnicity since we don't want to use them, and compare them to the model with all predictors
-summary(mod3_2)
+#summary(mod3_2)
 anova(mod3_1,mod3_2)
 ```
 
-```{r,echo=FALSE}
+```{r chunk3_4,echo=FALSE}
 mod3_3 <- step(mod3_2)
 summary(mod3_3)
 anova(mod3_1,mod3_3)
-#testing to see if we need Education and Married
+#testing to see what we can drop
 ```
 
-```{r}
+```{r chunk3_5, echo=FALSE }
+ncvTest(mod3_3)
+par(mfrow=c(2,2))
 plot(mod3_3)
-avPlots(mod3_3)
-plot(allEffects(mod3_3))
+#avPlots(mod3_3)
+#plot(allEffects(mod3_3))
 #Running Diagnostics
 ```
 
-There is some serious NCV that needs delt with, coming from entries where Balance=0
 
-```{r}
+```{r chunk3_6, echo=FALSE}
 Credit2<- Credit[Credit$Balance!=0,]
-mod3_4 <- step(lm(Balance~ID+Income+Limit+Rating+cardsF+Education+Gender+Student+Married+Ethnicity,data=Credit2))
+mod3_4 <- lm(Balance~Income+Limit+Rating+Cards+Student,data=Credit2)
 summary(mod3_4)
 ```
 
-```{r}
-plot(mod3_4)
-avPlots(mod3_4)
-plot(allEffects(mod3_4))
+```{r chunk3_7, echo=FALSE}
 ncvTest(mod3_4)
+par(mfrow=c(2,2))
+plot(mod3_4)
+#avPlots(mod3_4)
+plot(allEffects(mod3_4))
 #Running Diagnostics
 ```
 
-By removing the 90 cases where balance is zero, we can do an extremely good job at prediciting balance with only 5 predictors. Next, we create a new variable that reports whether or not the person has a balance, and use this variable as a response.
+## Dealing with zero balance
 
-```{r}
-library(car)
+```{r chunk3_8, echo=FALSE}
 Credit3<-Credit
 Credit3$BalanceF<- as.numeric(Credit3$Balance>0)
-mod3_5<- lm(BalanceF~Limit+Student+Rating+cardsF+Age+Education+Gender+Married+Ethnicity+Income+ID,data=Credit3)
+mod3_5<- step(lm(BalanceF~Limit+Student+Rating+cardsF+Education+Income,data=Credit3))
 summary(mod3_5)
-mod3_6<-step(mod3_5)
-summary(mod3_6)
 ```
 
-We have found the optimal factors to use. Next we see if the interactions between these factors can help us.
 
-```{r}
+
+```{r chunk3_9, echo=FALSE}
 mod3_7<-step(lm(BalanceF~Student*Limit*Income,data=Credit3))
-summary(mod3_7)
 ```
 
-Since these models are not being used like normal linear model, we use random splitting to test which one most effeciently predicts when the balance will be zero.
-
-```{r}
-library(doParallel)
-
+```{r chunk3_10, echo=FALSE}
 mine<-detectCores()
 mine<-min(c(max(c(1,mine-1)),5))
 cl<-makeCluster(mine)
@@ -114,41 +109,31 @@ foreach(i=1:1000,.combine="+",.options.RNG=623)%dopar% {
 	return(eff)
 }
 
-foreach(i=1:1000,.combine="+",.options.RNG=623)%dopar% {
-  set=sample(1:dim(Credit3)[1],300,replace=FALSE)
-	M1<-lm(BalanceF~Student+Limit+Income,data=Credit3[set,])
-	Predict <- predict(M1,newdata=Credit3[-set,])
-	myPredict<- ifelse(Predict >0.5,"1","0")
-	mytable <- table(Credit3[-set,]$BalanceF,myPredict)
-	eff<-sum(diag(mytable))/sum(mytable)
-	return(eff)
-}
-
 stopCluster(cl)
 ```
 
-Model 3_7 predicts correctly 97.8 percent of the time whether or not the balance is zero, while model 3_6 predicts correctly only 96.2 percent of the time. We can now use Model 3_7 to predict whether or not the balance is zero, then predict the value of the balance, when appropriate, using Model 3_4. (This method can be further improved by using a generalized linear model with a binomial distribution instead of a normal one but that is outside the scope of this class).
 
-We can combine these two models in the following way to make them one model, but it becomes harder to interpret.
 
-```{r}
+```{r chunk3_11, include=FALSE}
 mod3_8<-step(lm(Balance~(Student*Limit*Income)*(log(Rating)+cardsF+Student+Limit+Income),data=Credit3))
+```
+
+```{r chunk3_12, echo=FALSE}
 summary(mod3_8)
 ```
 
 ```{r}
 plot(mod3_8)
-avPlots(mod3_8)
-plot(allEffects(mod3_8))
+#avPlots(mod3_8)
+#plot(allEffects(mod3_8))
 ncvTest(mod3_8)
 #Running Diagnostics
 ```
 
 # Problem 4
 
-```{r}
-library(carData)
-head(Salaries)
+```{r chunk4_1,echo=false}
+#head(Salaries)
 summary(Salaries)
 ```
 
