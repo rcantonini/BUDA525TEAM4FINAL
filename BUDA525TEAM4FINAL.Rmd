@@ -80,7 +80,7 @@ plot(allEffects(mod3_4))
 ```{r chunk3_8, echo=FALSE}
 Credit3<-Credit
 Credit3$BalanceF<- as.numeric(Credit3$Balance>0)
-mod3_5<- step(lm(BalanceF~Limit+Student+Rating+cardsF+Education+Income,data=Credit3))
+mod3_5<- step(lm(BalanceF~Limit+Student+Rating+Cards+Education+Income,data=Credit3))
 summary(mod3_5)
 ```
 
@@ -115,20 +115,16 @@ stopCluster(cl)
 
 
 ```{r chunk3_11, include=FALSE}
-mod3_8<-step(lm(Balance~(Student*Limit*Income)*(log(Rating)+cardsF+Student+Limit+Income),data=Credit3))
+mod3_8<-step(lm(Balance~(Student*Limit*Income)*(log(Rating)+Cards+Student+Limit+Income),data=Credit3))
 ```
 
 ```{r chunk3_12, echo=FALSE}
 summary(mod3_8)
+ncvTest(mod3_8)
+par(mfrow=c(2,2))
+plot(mod3_8)
 ```
 
-```{r}
-plot(mod3_8)
-#avPlots(mod3_8)
-#plot(allEffects(mod3_8))
-ncvTest(mod3_8)
-#Running Diagnostics
-```
 
 # Problem 4
 
