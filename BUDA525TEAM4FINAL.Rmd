@@ -15,6 +15,35 @@ library(carData)
 ```
 
 # Problem 1
+## Bootstrapping
+
+When we want to establish a confidence interval for certain sample statistics, we often use the central limit theorem (CLT) and assume for a sufficient sample size, the statistic will follow a normal distribution. In some cases this assumption may not be correct, or in other instances we may not be able to collect enough samples to establish this normal distribution. In these instances we can use bootstrapping.  The purpose of bootstrapping is to obtain a confidence interval for sample statistics without having to invoke the CLT.
+
+The basic process of bootstrapping is always the same. We treat a sufficiently large sample as if it were the population and then construct numerous quazi-samples the same size as our sample, by randomly choosing members of the sample and then replacing them. The number of quazi-samples we create (k) depends on how fine we want our analysis to be. This method is only valid when our sample is representative of the population.
+
+Bootstrapping establishes a distribution of values our sample statistic could have been using our sample. This allows us to calculate confidence intervals at different percentiles based on this distribution.
+
+## Randomization Test
+
+Randomization test is very similar to bootstrapping with some key differences. In Randomization test, we are concerned with hypothesis testing. Once we have established our null hypothesis, we assume it is true and randomize the data accordingly. For example, suppose we want to see if exam scores are different on the basis of gender. Our null hypothesis would be that there is no difference in the exam scores based on gender. We establish a distribution where this is the case by taking all of our exam scores and randomly assigning gender to them, making sure that there are the same number of boys and girls as in our original sample. By doing this numerous times (1000 for instance), we can establish the possible values we could get for the average difference in exam scores of boys and girls and the associated probabilities if the null hypothesis were true. We can then calculate the probability of getting a value as or more extreme than the one we observed and this becomes our p-value.
+
+## Difference
+The difference between bootstrap and randomization is that bootstrap is repeatedly using actual sample data, randomization is randomly generating numbers, where each number occurs with equal probability.
+
+## Client Explanation
+### One Line Version
+
+Bootstrapping is a method we use to simulate gathering multiple samples using only one large sample.. We use this to create confidence intervals (a range the true answer is likely to be in) for statistics like mean and standard deviation.  We resample our population using replacement and we trust this because the resampling is using our actual data and treating it as though it represents the population.  The larger our data set, the better our inference and predictions.
+
+Randomization is using a chance method to test a hypothesis. We simulate the scenario where our hypothesis is false by randomly selecting values, using their probability. We trust this method because we test against a simulation of our data where there actually is no difference, instead of a theoretical version of what this should look like. The larger our data set, the better our inference and predictions.
+
+### Elevator Speech Version
+
+Classic statistical methods make certain assumptions that can sometimes be problematic. For instance, say you want to find out what the average shoe size of a 6th grade American boy is. The only way to know this for sure is to get the shoe size of every single 6th grade American boy and calculate the average. Because we don’t have time to do this, we might use classic statistics to estimate this value. To do this, we would likely just collect several samples from various schools. These samples would each be a little different; this is called variance. Normally, we use this variance figure out a range we are fairly certain the actual average is based on how many samples we collected. The more samples we collect, the more we can narrow this range down. What if we only had the resources to sample the largest school in American, however and we have good reason to believe it is fairly representative of the rest of America (i.e. there are no big feet walking around).  We have a large pool of data, but we don’t have any variance between samples to leverage classic statistical techniques. Does this mean we can’t use this data to estimate the average?  
+
+Instead of having to throw away all the data in instances like this, we have a method called bootstrapping. Bootstrapping allows us to “pull ourselves up by our bootstraps” so to speak, and find information from data without making some of the heavy assumptions that are normally used in statics. To do this, we effectively “reshuffle” our data over and over again (often thousands of times) to see what values we could have observed from a sample similar to our own. We then use the variance between these to calculate a range we are fairly sure the actual statistic is in, similar to how we would if we had actually collected several samples.
+
+You may wonder why we haven’t always been able to do this. Before, it would have taken an extremely long time to shuffle our data over and over again, but now thanks to computers we can do this in practically no time at all. Bootstrapping is awesome when used properly, especially considering the ways we now collect data (for instance, it's hard to think of an internet survey as several different samples). That being said,it makes some assumptions of its own that you have to be careful about. For instance if you were trying to find the average salary of an American and you bootstrapped a sample you obtained at a charity gala for donors, you are going to high-ball your estimation. It is important that the data you are using is representative of the population you are trying to estimate. It's also not a good idea to bootstrap a small set of data for a similar reason. This doesn’t mean bootstrapping is unreliable, just make sure that if someone presents you a bootstrap you ask them how big the dataset is, and if the data is representative of the population. So long as the answers are “big” and “yes” bootstrapping is a perfectly acceptable way of making estimations.
 
 
 
@@ -207,12 +236,12 @@ This resulting model is a little tedious to interpret but deals with the NCV, ma
 
 # Problem 4
 
-The Salaries data in the carData package contains information on academic salaries in 2008 and 2009 in a college in the US. A data dictionary can be found in the help file for the data. This data was collected as part of an on-going effort of the college to monitor salary differences between male and female faculty members. We have been asked to investigate the gender gap in the data, but also what other information that may be relevant to admistrators (i.e. salary growth for years of service, discipline based growth, etc). Investigate if there is a gender gap, but also provide insights on other drivers that you may see of salary in the data. Is your model suitable to make offers based on the infromation provided? Explain your reasoning. Provide insights into any other information you find of interest.
+The Salaries data in the carData package contains information on academic salaries in 2008 and 2009 in a college in the US. A data dictionary can be found in the help file for the data. This data was collected as part of an on-going effort of the college to monitor salary differences between male and female faculty members. We have been asked to investigate the gender gap in the data, but also what other information that may be relevant to administrators (i.e. salary growth for years of service, discipline based growth, etc). Investigate if there is a gender gap, but also provide insights on other drivers that you may see of salary in the data. Is your model suitable to make offers based on the information provided? Explain your reasoning. Provide insights into any other information you find of interest.
 
 We want to investigate the gender gap in the data as well as provide any other drivers that could influence the gap, and determine whether our model of choice is suitable to make offers.
 
 
-```{r chunk4_1}
+```{r chunk4_1, echo=FALSE}
 library(effects)
 library(carData)
 library(car)
@@ -222,15 +251,15 @@ summary(Salaries)
 dim(Salaries)
 ```
 
-We have 397 observations with 6 variables. Rank is a factor, with 67 professors being Assistants, 64 being Associate, and 266 are full professors. Discipline is another factor: 181 teach a theoretical discipline, and 216 teach applied. yrs.since.phd has a wide range from 1 year all the way to 56. yrs.service also has a wide range, 0 years (assuming these people's first year was the 08-09 academic calendar year) all the way to 60 years. The 0 could create an issue later on. Sex is a very skewed factor in this data set, 358 are males and only 39 are females. This could create some issues. The nine-month salary is in dollars and ranges from 57,800 - 231,545.
+We have 397 observations with 6 variables. Rank is a factor, with 67 professors being Assistants, 64 being Associate, and 266 are full professors. Discipline is another factor: 181 teach a theoretical discipline, and 216 teach applied. yrs.since.phd has a wide range from 1 year all the way to 56. yrs.service also has a wide range, 0 years (assuming these people's first year was the 08-09 academic calendar year) all the way to 60 years. The 0 could create an issue later on. Sex is a very skewed factor in this data set, 358 are males and only 39 are females. This could create some issues. The nine-month salary is in dollars and ranges from 57,800 to 231,545.
 
 ```{r chunk4_2}
 t.test(Salaries$salary[Salaries$sex=="Male"], Salaries$salary[Salaries$sex=="Female"], alternative="greater")
 ```
 
-The t-test = null hypothesis is males makes less than or equal to what females make. So the alternative is that males make more than females. the p-value is less than 0.05. Using a hard cut off, we would reject the null hypothesis that males make more than females. the mean of x (males) is 115090.4. the mean for y (females) is 101002.4. But this is just looking at straight averages, and as we saw above, we have way more male observations than female. And we know that there are other variables that might play a role into the conclusion. 
+The t-test’s = null hypothesis is that males makes less than or equal to what females make. So the alternative is that males make more than females. the p-value is less than 0.05. Using a hard cut off, we would reject the null hypothesis that males make more than females. the mean of x (males) is 115090.4. the mean for y (females) is 101002.4. But this is just looking at straight averages, and as we saw above, we have way more male observations than female. And we know that there are other variables that might play a role into the conclusion. 
 
-```{r chunk4_3}
+```{r chunk4_3, echo=FALSE}
 mod1_4<-lm(salary~rank+discipline+yrs.since.phd+yrs.service+sex,data=Salaries)
 residualPlot(mod1_4)
 par(mfrow=c(2,2))
@@ -240,14 +269,14 @@ summary(mod1_4)
 plot(allEffects(mod1_4))
 ```
 
-First we will fit a model using salary as our response and the rest of the variables as the predictors. In our residual plot, we see that as the salary increases, so does the variance. Unforuntately this cone-shape is a sign of non-constant variance. We see a similar pattern in the Residuals vs. Fitted plot. The normal Q-Q plot looks ok, has a few points getting away from the line towards the top. The Scale-Location plot has a positive trend showing. The Residuals vs. Leverage plot looks good, nothing is near Cook's distance.
+First we will fit a model using salary as our response and the rest of the variables as the predictors. In our residual plot, we see that as the salary increases, so does the variance. Unfortunately this cone-shape is a sign of non-constant variance. We see a similar pattern in the Residuals vs. Fitted plot. The normal Q-Q plot looks ok, has a few points getting away from the line towards the top. The Scale-Location plot has a positive trend showing. The Residuals vs. Leverage plot looks good, nothing is near a problematic Cook's distance.
 
-Our ncvTest p-value is close to 0. So we can reject the null hypothesis that the variance of the residuals is constant, and confirm our graphical inference.
+Our ncvTest p-value is close to 0. So we can reject the null hypothesis that the variance of the residuals is constant, and confirm our graphical intuition.
 Even though we know we have NCV in this model, lets see what the summary says. From here we can see that sex is not a significant factor. But what stands out is that the more years of service, the less money they would make in this model, which does not make any sense. So we will keep trying. 
 
 The allEffects plot shows this negative correlation between yrs.service and salary, along with a high variance as years increase.
 
-```{r chunk4_4}
+```{r chunk4_4, echo=FALSE}
 boxCox(mod1_4)
 mod4_4<-lm(I(1/salary)~rank+discipline+yrs.since.phd+yrs.service+sex,data=Salaries)
 residualPlot(mod4_4)
@@ -256,9 +285,8 @@ summary(mod4_4)
 plot(allEffects(mod4_4))
 ```
 
-According to boxCox, lambda is close to -1, which tells us to try using the inverse of our repsonse variable. So we try that and check out residuals. We have a very slight u-shaped curve and it looks as if our cone-shape is now just flipped over, but not as bad as before. Our ncvTest p-value is again close to 0. So we can reject the null hypothesis and confirm that we still have NCV. Our summary shows us that our r-squared value is 57%, which we think we can do better than that once we correct the NCV. Our allEffects plots still don't quite make sense. The yrs.service is now corrected (salary increases as does yrs.service) but now it's showing that the higher the rank, the lower the salary. So we know this isn't right. 
-
-```{r chunk4_5}
+According to boxCox, lambda is close to -1, which tells us to try using the inverse of our response variable. So we try that and then check out residuals. We have a very slight u-shaped curve and it looks as if our cone-shape is now just flipped over, but not as bad as before. Our ncvTest p-value is again close to 0. So we can reject the null hypothesis and confirm that we still have NCV. Our allEffects plots still don't quite make sense. Because the response is the reciprocal, this model is extremely difficult to interpret.
+```{r chunk4_5, echo=FALSE}
 Salaries$yrs.service.p1 <- Salaries$yrs.service + 1
 mod2_4<- lm(log(salary) ~ rank+discipline+sex, weights=1/I(yrs.service.p1), data=Salaries)
 residualPlot(mod2_4)
@@ -279,25 +307,25 @@ AIC(mod3_4)
 
 In order to make the dataset nicer, we add one to ever observation of yrs.service to get yrs.service.p1. This will allow us to do more with the variable. 
 
-The final model we ended with is using rank + discipline + sex, weighted by yrs.service.p1 to predict log(salary). 
+The final model we ended with is using rank + discipline + sex, weighted by 1/yrs.service.p1 to predict log(salary). We choose this weight because there are numerous factors that affect variance in pay as you work a position longer.
 
-The residual plot looks pretty good. a lot of fitted values are on the same value throughout but it looks like pretty good constant variance. There is a similar pattern in the Residuals vs. Fitted plot. The normal Q-Q plot looks pretty good. The Scale-Location plot looks good, no longer has a trend. The Residuals vs. Leverage plot looks good, nothing is too close to Cook's distance.
+The residual plot looks pretty good; a lot of fitted values are on the same value throughout but it looks like pretty constant variance. There is a similar pattern in the Residuals vs. Fitted plot. The normal Q-Q plot looks pretty good. The Scale-Location plot looks good, no longer has a trend. The Residuals vs. Leverage plot looks good, nothing is too close to a problematic Cook's distance.
 
 Our ncvTest is much better. p-value of 0.94 says we fail to reject the null hypothesis. We do not have enough evidence that this is NCV. So we can assume we have constant variance. 
 
 Anova tells us that each of these variables are significant. The higher the rank, the higher the salary. An applied discipline makes more on average than a theoretical discipline. However, this is also showing that sex matters, meaning if you are male then you make more than if you were female, which is very concerning. 
 
-Our AIC is -268, lower than any other model we tested with log(salary) as the response. Using backwards stepwise to see if we can make any quick changes to our model, it says that doing nothing will give us the lowest AIC, so based on the predictors included in this model, I still shouldn't change anything as it is currently. 
+Our AIC is -268, lower than any other model we tested with log(salary) as the response. Using backwards stepwise to see if we can make any quick changes to our model, it says that doing nothing will give us the lowest AIC, so based on the predictors included in this model, I still shouldn't change anything. 
 
-Our avPlots and allEffects plot tell similar stories. Going from Assistant professor to Associate professor is significant, and a nice increase in salary. Going from Associate to Full professor is an even better increase in salary. Teaching in Discipline B (applied) is also an increase in salary from teaching in Discipline A (theoretical). It appears as if there is an increase from going from female to male employee. The whiskers are overlapping a little so lets look to our summary to check these out.
+Our avPlots and allEffects plot tell similar stories. Going from Assistant professor to Associate professor is significant, and a nice increase in salary. Going from Associate to Full professor is an even better increase in salary. Teaching in Discipline B (applied) is also an increase in salary from teaching in Discipline A (theoretical). It appears as if there is an increase from going from female to male employees. The whiskers are overlapping a little so let's look to our summary to check these out.
 
-According to our summary, our intercept is 11.18 when everything else is = 0. Since our coefficients are missing female and assitant, we know these are what's being included in our intercept. Our coefficients are giving us valuable insights when using this model. Going from Assistant Professor to ASsociate Professor would result in a 19% increase in average salary. Going from Assistant Professor to Full Professor (which I don't believe can happen) would be a 44% increase in average salary. Teaching an applied discipline instead of a theoretical discipline would be an 11% increase in average salary. And finally, going from female to male would result in an increase of 5% in average salary. Given all of these variables are in the model, all of these variables are significant based on p-value. The fact that sex is considered significant is an issue. Our model r-squared is accounting for 71% of all variance and our model's p-value is significant, so we decide to go with this model. 
+According to our summary, our intercept is 11.18 when everything else is equal to 0. Since our coefficients are missing female and assistant, we know these are what's being included in our intercept. Our coefficients are giving us valuable insights when using this model. Going from Assistant Professor to Associate Professor would result in a 19% increase in average salary. Going from Assistant Professor to Full Professor (which I don't believe can happen) would be a 44% increase in average salary. Teaching an applied discipline instead of a theoretical discipline would be an 11% increase in average salary. And finally, going from female to male would result in an increase of 5% in average salary. Given all of these variables are in the model, all of these variables are significant based on p-value. The fact that sex is considered significant is an issue. Our model r-squared is accounting for 71% of all variance and our model's p-value is significant, so we decide to go with this model. 
 
 Let's see if we can create a better model by removing sex. In mod3_4, all we do is remove sex, and leave everything else the same. 
 
-ANOVA allows us to compare submodels to determine which one is better. mod3_4 is a submodel of mod2_4. Since 'sex' is the only variable we removed, we are basically just comparing what the difference in sex does. Our p-value is significant, so we reject the null hypothesis. We confirm that sex is an important variable. In this instance, simpler is not better, and the model containing sex will be the better model. The F-statistic is telling us that it's better to use variables than to do nothing. We use AIC again to compare the models since our response variables are the same. For mod2_4, our AIC was -268, for mod3_4, our AIC is -263. So it confirms that sex is an important variable and that mod2_4 is the better model to use. 
+ANOVA allows us to compare submodels to determine which one is better. mod3_4 is a submodel of mod2_4. Since 'sex' is the only variable we removed, we are basically just comparing what the difference in sex does. Our p-value is significant at .05, so we reject the null hypothesis, but it is very close and would have failed at .001. We confirm that sex is an important variable. In this instance, simpler is not better, and the model containing sex will be the better model. The F-statistic is telling us that it's better to use variables than to do nothing. We use AIC again to compare the models since our response variables are the same. For mod2_4, our AIC was -268, for mod3_4, our AIC is -263. So it confirms that sex is an important variable and that mod2_4 is the better model to use. 
 
-```{r chunk4_6}
+```{r chunk4_6, echo=FALSE, cache=TRUE}
 
 mod2_4<- lm(log(salary) ~ rank+discipline+sex, weights=1/I(yrs.service.p1), data=Salaries)
 mod3_4<- lm(log(salary) ~ rank+discipline, weights=1/I(yrs.service.p1), data=Salaries)
@@ -334,15 +362,17 @@ stopCluster(cl)
 ```
 
 
-We can use random splitting to test the models now to make sure the model including sex will be the better predictor. In this method, we are randomly splitting the data, training it, and then testing it however many times we deisgnate, in this case 1000. Predicting over more and more sets will smooth out the average.
+We can use random splitting to test the models now to make sure the model including sex will be the better predictor. In this method, we are randomly splitting the data, training it, and then testing it however many times we designate, in this case 1000. Predicting over more and more sets will smooth out the average.
 
 We will access the doParallel library and the foreach library to use a for loop while using parallel processing to speed this up. The detectCores() function allows us to find out how many cores are on the machine. Then we divide this by 2, to ensure we are only using half of the available cores. cl will be my cluster and we will registerDoParallel(cl) so I can use the 4 cores. getDoParWorkers verifies the number of cores we are using. 
 
-Now I will set my seed and run the foreach loop. We use registerDoRNG() to ensure the seed will be passed the same way to parallel processing. This is saying we will run through this loop 1000 times, training the data on 300 of the observations, and testing it on the remainder. Then we will calculate the residual sum of squares by comparing how bad our predictions were. But to do this, we must use exp() for our repsonse variable so we are comparing correctly. 
+Now I will set my seed and run the foreach loop. We use registerDoRNG() to ensure the seed will be passed the same way to parallel processing. This is saying we will run through this loop 1000 times, training the data on 300 of the observations, and testing it on the remainder. Then we will calculate the residual sum of squares by comparing how bad our predictions were. But to do this, we must use exp() for our response variable so we are comparing correctly. 
 
 Again, random splitting confirms that we should use mod2_4. The residual sum of squares is smaller.
 
-And then we must always use stopCluster afterwards to make sure we clean up.
+And then we must always use stopCluster afterwards to make sure we clean up. 
+
+Using this particular model based on this sample, we can see the changes in salary based on rank, discipline that’s being taught, and sex. There was some interesting things to note about the data. There are no associate professors with more than 6 years of service. We attributed that to the rules of tenure, where typically after year 5, you’re either fired or awarded tenure. In this specific dataset, there was only 1 person with 6 years, and only 3 people with 5 years. However, a lot of the variance came within the associate professor rank. A variable that we thought would be helpful if included would be the years in current rank. Instead of using years of service, we could know how long each person has been in their current rank and use that as a better predictor for each rank’s salary. This would help with predicting what promotion offers should be. One big issue with the dataset used is that we had 358 male observations, and only 39 female observations. We believe this disparity between the two sample sizes is helping cause that “gender gap” in salary that appeared in our model. We are only as good as the data we have available. If the gender observations were closer in size, we think that gender gap would shrink or not even exist possibly. And since we are only as good as our data, our model is only as good as our data. Therefore, we do not think this is a suitable model to propose offers given the dataset available. 
 
 
 
