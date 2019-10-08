@@ -1,7 +1,7 @@
 ---
 title: 'BUDA 525: Team 4 Final Project'
 author: "Ryan Antonini, Danny Germain, Joshua Meadows, Josh Nelson, Bill Robertson"
-date: "9/27/2019"
+date: "Due 10/8/2019"
 output: word_document
 ---
 
@@ -22,8 +22,6 @@ When we want to establish a confidence interval for certain sample statistics, w
 The basic process of bootstrapping is always the same. We treat a sample as if it were the population and then construct numerous quazi-samples the same size as our sample, by randomly choosing members of the sample and then replacing them. The number of quazi-samples we create (k) depends on how fine we want our analysis to be. This method is only valid when our sample is representative of the population.
 
 Bootstrapping is basically resampling with resubstitution. It’s a method to simulate collecting more data.
-
-Bootstrapping establishes a distribution of values our sample statistic could have been using a similar sample. This allows us to calculate confidence intervals at different percentiles based on this distribution.
 
 ## Randomization Test
 
@@ -63,7 +61,7 @@ $$R^2=\frac{SSReg}{SYY}=1-\frac{RSS}{SYY}$$
 
 In order to calculate R-squared, we need a regression model, which produces a prediction line.  The numerator or “explained variance” is calculated by subtracting each of the predicted values from the actual values, square them, and sum across all data points.  The denominator or “total variance” is calculated similarly, but instead of subtracting the actual value from each predicted value, we subtract the average of the actual values from the predicted value.  We do the division and then subtract from 1 to get the R-squared. The output will be a number between 0 and 1, which can be thought of as a percent of the variation that can be explained by the model.
 
-One advantage of evaluating the R-squared is that it is a simple view to get a feel for a single model. Another advantage is that we can explain the variation.  However, we do not necessarily know if our model needs a transformation in the response/predictor variables or if our sampling is sufficient. R-squared should not be used to compare models with a different number of predictors, because adding predictors can only help the R-squared value. This method also should not be used to compare models where the response has been transformed because this number doesn’t account for the scaling that occurs in these instances.
+One advantage of evaluating the R-squared is that it is a simple view to get a feel for a single model. Another advantage is that we can explain the variation.  However, we do not necessarily know if our model needs a transformation in the response/predictor variables or if our sampling is sufficient. R-squared should not be used to compare models with a different number of predictors, because adding predictors can only help the R-squared value or leave it unchanged. This method also should not be used to compare models where the response has been transformed because this number doesn’t account for the scaling that occurs in these instances.
 
 ## Anova
 
@@ -162,6 +160,9 @@ ncvTest(mod3_4)
 par(mfrow=c(2,2))
 plot(mod3_4)
 #avPlots(mod3_4)
+```
+
+```{r chunk3_7_2,echo=FALSE, fig.height=12,fig.width=12 }
 plot(allEffects(mod3_4))
 #Running Diagnostics
 ```
@@ -263,11 +264,15 @@ The t-test’s null hypothesis is that males make less than or equal to what fem
 
 ```{r chunk4_3, echo=FALSE}
 mod1_4<-lm(salary~rank+discipline+yrs.since.phd+yrs.service+sex,data=Salaries)
-residualPlot(mod1_4)
+#residualPlot(mod1_4)
 par(mfrow=c(2,2))
 plot(mod1_4)
 ncvTest(mod1_4)
 summary(mod1_4)
+```
+
+```{r chunk4_3_2, echo=FALSE,fig.height=12,fig.width=12 }
+
 plot(allEffects(mod1_4))
 ```
 
@@ -279,11 +284,15 @@ Even though we know we have NCV in this model, lets see what the summary says. F
 The allEffects plot shows this negative correlation between yrs.service and salary, along with a high variance as years increase.
 
 ```{r chunk4_4, echo=FALSE}
+#par(mfrow=c(1,2))
 boxCox(mod1_4)
 mod4_4<-lm(I(1/salary)~rank+discipline+yrs.since.phd+yrs.service+sex,data=Salaries)
-residualPlot(mod4_4)
+#residualPlot(mod4_4)
 ncvTest(mod4_4)
 summary(mod4_4)
+```
+
+```{r chunk4_4_2, echo=FALSE , fig.height=12,fig.width=12}
 plot(allEffects(mod4_4))
 ```
 
@@ -291,7 +300,7 @@ According to boxCox, lambda is close to -1, which tells us to try using the inve
 ```{r chunk4_5, echo=FALSE}
 Salaries$yrs.service.p1 <- Salaries$yrs.service + 1
 mod2_4<- lm(log(salary) ~ rank+discipline+sex, weights=1/I(yrs.service.p1), data=Salaries)
-residualPlot(mod2_4)
+#residualPlot(mod2_4)
 par(mfrow=c(2,2))
 plot(mod2_4)
 ncvTest(mod2_4)
@@ -299,12 +308,17 @@ anova(mod2_4)
 AIC(mod2_4)
 step(mod2_4)
 avPlots(mod2_4)
-plot(allEffects(mod2_4))
+
 summary(mod2_4)
 
 mod3_4<- lm(log(salary) ~ rank+discipline, weights=1/I(yrs.service.p1), data=Salaries)
 anova(mod3_4, mod2_4)
 AIC(mod3_4)
+```
+
+```{r chunk4_5_2, echo=FALSE, fig.height=12,fig.width=12}
+
+plot(allEffects(mod2_4))
 ```
 
 In order to make the dataset nicer, we add one to ever observation of yrs.service to get yrs.service.p1. This will allow us to do more with the variable. 
