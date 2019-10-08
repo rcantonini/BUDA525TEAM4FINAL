@@ -20,21 +20,70 @@ library(carData)
 
 # Problem 2
 
+## Intro
+
+When we are comparing models, there are several methods we can use. Some methods are more simple in that we only look at a calculation based on the specific model output itself and others use sampling methods that compare our prediction between models. The following article will compare six methods by describing how each works, advantages or when to use, and the disadvantages or restrictions of each. 
+
+## R-squared
+
+R-squared, called the coefficient of determination, is used to explain the proportion of the dependent variable that is explainable in predicting the independent (y/response) variable.
+  
+$$R^2=\frac{SSReg}{SYY}=1-\frac{RSS}{SYY}$$
+
+In order to calculate R-squared, we need a regression model, which produces a prediction line.  The numerator or “explained variance” is calculated by subtracting each of the predicted values from the actual values, square them, and sum across all data points.  The denominator or “total variance” is calculated similarly, but instead of subtracting the actual value from each predicted value, we subtract the average of the actual values from the predicted value.  We do the division and then subtract from 1 to get the R-squared. The output will be a number between 0 and 1, which can be thought of as a percent of the variation that can be explained by the model.
+
+One advantage of evaluating the R-squared is that it is a simple view to get a feel for a single model. Another advantage is that we can explain the variation.  However, we do not necessarily know if our model needs a transformation in the response/predictor variables or if our sampling is sufficient. R-squared should not be used to compare models with a different number of predictors, because adding predictors can only help the R-squared value. This method also should not be used to compare models where the response has been transformed because this number doesn’t account for the scaling that occurs in these instances.
+
+## Anova
+
+Anova or “analysis of variance” or “F-tests” is a way of comparing models that are a subset of one another (I.e. y~x+z vs. y~x). This test produces an F-statistic. If the F-statistic is effectively zero, we conclude the models basically account for the same amount of variance in the residuals, and thus Occam's razor says we should prefer the simpler model. There are a few types of ANOVA test. The most common are type 1 and type 2. The difference between these two is that type 1 depends on the order the predictors are in whereas type 2 does not. If the predictors are orthogonal, these two tests will produce the same values.
+
+## Akaike Information Criterion (AIC)
+
+$$n \log{\left( \frac{RSS_M}{n}  \right)} + 2(p+1)$$
+
+AIC can be used when models we want to compare have the same response (I.e. sqrt(y) vs. sqrt(y)). With these tests, we prefer the model with the lowest score. These quality estimators are nice because they consider the goodness of fit but add a penalty to models with a higher number of predictors. 
+
+## Bayesian Information Criterion (BIC)
+
+$$n \log{\left( \frac{RSS_M}{n}  \right)} + \log{(n)}(p+1)$$
+
+BIC is similar to AIC in that we can compare models that have the same response (I.e. sqrt(y) vs. sqrt(y)). However, BIC penalizes the number of predictors more harshly, so we pay more attention to this score when we want a simpler model for explanation purposes, or we have cause to believe overfitting might be an issue. Again we want to see models with lower scores.  
+
+## K-Fold Cross-Validation
+
+The K-Fold Cross Validation method works by splitting the data into groups.  Once the groups are established, most commonly in five or ten groupings, we loop through the data one time for each grouping.  We hold out one of the groups for prediction and the rest for modeling.  We then calculate the residual sum of squares (RSS) by subtracting the modeled value from the actual value. We run this process for multiple models and then pick the model with the lowest RSS.
+
+This method has some advantages and disadvantages that will impact whether or not to go this route. We can use it to compare models where the response is any transformation of the same variable (I.e. sqrt(y) vs. log(y)). The issue with using K-Fold is that it can be somewhat time-consuming, which is further compounded by the fact that it works best for large data sets. Consequently, these tests should be used sparingly. It is best to use other methods to narrow down the set of candidate models as much as possible before using these methods.
+
+By leveraging parallel computing, we can somewhat reduce the run time of these methods, but it is important to note that we cannot reduce the time complexity of these algorithms. In general, the higher k is, the more refined your comparison is, but this also increases the run-time.
+
+## Random Splitting
+
+Random Splitting is similar to K-Fold Cross-Validation in many ways. They both also allow for model comparison with any transformation of the same response variable. They also both work well with large datasets.  The main difference is that instead of splitting the entire dataset into sections and only testing once through each of those, we can select a much larger number of random samples.  We loop through the dataset randomly sampling the training and validation set.Random splitting produces a much more refined comparison than k-fold cross-validation, but it also takes much more time   
+
 
 
 # Problem 3
 
+We are asked to investigate a set of credit data to see what influences credit card balance. We start by looking at a summary of the data.
 
 ```{r chunk3_1, echo=FALSE}
 #head(Credit)
 summary(Credit)
 ```
 
+We see that $Balance$ can be zero. We keep this information in mind as we proceed. 
+
+Next, we fit a linear model with $Balance$ as the response and all other variables as predictors to see how we should proceed.
+
 ```{r chunk3_2,echo=FALSE}
 mod3_1 <- lm(Balance~ID+Income+Limit+Rating+Cards+Education+Gender+Student+Married+Ethnicity,data=Credit)
 #We start by fitting a model with all predictors to find out how to procede
 summary(mod3_1)
 ```
+
+Next, we fit a model that does not include $Gender$ and $Ethnicity$, do to ethical problems surrounding using these variables as predictors.
 
 ```{r chunk3_3,echo=FALSE}
 mod3_2 <- lm(Balance~ID+Income+Limit+Rating+Cards+Education+Student+Married,data=Credit)
@@ -43,12 +92,19 @@ mod3_2 <- lm(Balance~ID+Income+Limit+Rating+Cards+Education+Student+Married,data
 anova(mod3_1,mod3_2)
 ```
 
+The results of our type 2 ANOVA tell us that we can successfully exclude $Gender$ and $Ethnicity$ without reducing the quality of our model. Next, we see if there are any other variables we can exclude based on AIC.
+
 ```{r chunk3_4,echo=FALSE}
 mod3_3 <- step(mod3_2)
 summary(mod3_3)
 anova(mod3_1,mod3_3)
 #testing to see what we can drop
 ```
+
+We see that based on AIC and type 2  ANOVA we can use only the predictors $Cards$, $Rating$, $Limit$, $Student$, and $Income$.
+
+Next, we run diagnostics on this model that uses only 5 predictors.
+
 
 ```{r chunk3_5, echo=FALSE }
 ncvTest(mod3_3)
@@ -59,12 +115,16 @@ plot(mod3_3)
 #Running Diagnostics
 ```
 
+The results of our NCV test and the residual plot tell us we have NCV. By inspection, we see that this is possibly due to values where $Balance$ is zero. Next, we exclude these values to see if we can get better results.
+
 
 ```{r chunk3_6, echo=FALSE}
 Credit2<- Credit[Credit$Balance!=0,]
 mod3_4 <- lm(Balance~Income+Limit+Rating+Cards+Student,data=Credit2)
 summary(mod3_4)
 ```
+
+Notice that our R-squared value is 0.998. We would only expect t an R-squared value this high if we have discovered the results of a mathematical calculation. Upon further reflection, we see in the help file for this data set that this is a simulated dataset, so we have likely found something very close to the formula used to create the non-zero values in this dataset.
 
 ```{r chunk3_7, echo=FALSE}
 ncvTest(mod3_4)
@@ -75,7 +135,20 @@ plot(allEffects(mod3_4))
 #Running Diagnostics
 ```
 
+We notice that $Student$ has a profound effect on $Balance$, with students on average having about a $500 higher balance compared to non-students, when everything else is accounted for. 
+
+Holding all else constant, the following trends are significant at a 0.01 alpha level: 
+*For each additional credit card that a person has, their balance goes up, on average, about $25
+*For each additional $10,000 a person makes, their balance goes down about $10
+*For each additional dollar that a person’s credit limit goes up, their Balance increases $0.34
+
+
 ## Dealing with zero balance
+
+There are 90 values where $Balance$ is zero, which is nearly a fourth of our data. In this section, we will try to find if there are factors that affect whether or not the balance is zero. This section reflects work that was done before we learned that we could exclude zero balance from our analysis and should be thought of as a “bonus section.”
+
+ We create a new variable as our response which takes the value 1 if the person has a balance, and 0 if they do not have a balance. We then create a model that test the 5 relevant predictors above and then we use AIC values to remove unnecessary predictors.
+
 
 ```{r chunk3_8, echo=FALSE}
 Credit3<-Credit
@@ -84,11 +157,16 @@ mod3_5<- step(lm(BalanceF~Limit+Student+Rating+Cards+Education+Income,data=Credi
 summary(mod3_5)
 ```
 
-
+We find that we only need the 3 variables $Limit$, $Student$, and $Income$ for this model. Next, we test the interactions between these variables and see if we can remove any interaction terms using AIC.
 
 ```{r chunk3_9, echo=FALSE}
 mod3_7<-step(lm(BalanceF~Student*Limit*Income,data=Credit3))
 ```
+
+We see that we do not need the interaction between all 3 variables, and we can just use the pairwise interactions.
+
+Notice that what we have done in this section falls outside the normal use of linear regression. We are using the predictors to generate a continuous response, even though our response can only have values zero or one in reality. We must now test whether our model will actually allow us to predict whether or not a person has a balance. To do this, we will use random-splitting, but instead of concerning ourselves with the RSS of the test set, we will predict if the person has a balance in the following way: if the fitted value of the model is greater than 0.5, we predict the person has a balance, and we predict they do not otherwise. We then calculated the percentage we predict correctly over 1000 randomly selected test sets of size 100, using the rest of the data to fit the model.
+
 
 ```{r chunk3_10, echo=FALSE}
 mine<-detectCores()
@@ -112,7 +190,7 @@ foreach(i=1:1000,.combine="+",.options.RNG=623)%dopar% {
 stopCluster(cl)
 ```
 
-
+We see that we predict correctly 97.8% of the time. We could first use this model to predict whether or not the person will have a balance, then predict the balance when appropriate, but instead, we try to use the information we learned to fit a model that effectively does all of this in one go by testing $(Student*Limit*Income)*(log(Rating)+cardsF+Student+Limit+Income)$ as the predictors of $Balance$. We then use AIC to remove unnecessary terms, although this analysis is left out for brevity.
 
 ```{r chunk3_11, include=FALSE}
 mod3_8<-step(lm(Balance~(Student*Limit*Income)*(log(Rating)+Cards+Student+Limit+Income),data=Credit3))
@@ -125,6 +203,7 @@ par(mfrow=c(2,2))
 plot(mod3_8)
 ```
 
+This resulting model is a little tedious to interpret but deals with the NCV, making it a good forecasting model, but not a good model to explain to a client.
 
 # Problem 4
 
