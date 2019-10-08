@@ -207,13 +207,142 @@ This resulting model is a little tedious to interpret but deals with the NCV, ma
 
 # Problem 4
 
-```{r chunk4_1,echo=FALSE}
-#head(Salaries)
+The Salaries data in the carData package contains information on academic salaries in 2008 and 2009 in a college in the US. A data dictionary can be found in the help file for the data. This data was collected as part of an on-going effort of the college to monitor salary differences between male and female faculty members. We have been asked to investigate the gender gap in the data, but also what other information that may be relevant to admistrators (i.e. salary growth for years of service, discipline based growth, etc). Investigate if there is a gender gap, but also provide insights on other drivers that you may see of salary in the data. Is your model suitable to make offers based on the infromation provided? Explain your reasoning. Provide insights into any other information you find of interest.
+
+We want to investigate the gender gap in the data as well as provide any other drivers that could influence the gap, and determine whether our model of choice is suitable to make offers.
+
+
+```{r chunk4_1}
+library(effects)
+library(carData)
+library(car)
+help(Salaries)
+head(Salaries)
 summary(Salaries)
+dim(Salaries)
 ```
 
-```{r chunk4_2, echo=FALSE}
-mod4_1<-lm(salary~rank+discipline+yrs.since.phd+yrs.service+sex, data=Salaries)
-summary(mod4_1)
+We have 397 observations with 6 variables. Rank is a factor, with 67 professors being Assistants, 64 being Associate, and 266 are full professors. Discipline is another factor: 181 teach a theoretical discipline, and 216 teach applied. yrs.since.phd has a wide range from 1 year all the way to 56. yrs.service also has a wide range, 0 years (assuming these people's first year was the 08-09 academic calendar year) all the way to 60 years. The 0 could create an issue later on. Sex is a very skewed factor in this data set, 358 are males and only 39 are females. This could create some issues. The nine-month salary is in dollars and ranges from 57,800 - 231,545.
+
+```{r chunk4_2}
+t.test(Salaries$salary[Salaries$sex=="Male"], Salaries$salary[Salaries$sex=="Female"], alternative="greater")
 ```
+
+The t-test = null hypothesis is males makes less than or equal to what females make. So the alternative is that males make more than females. the p-value is less than 0.05. Using a hard cut off, we would reject the null hypothesis that males make more than females. the mean of x (males) is 115090.4. the mean for y (females) is 101002.4. But this is just looking at straight averages, and as we saw above, we have way more male observations than female. And we know that there are other variables that might play a role into the conclusion. 
+
+```{r chunk4_3}
+mod1_4<-lm(salary~rank+discipline+yrs.since.phd+yrs.service+sex,data=Salaries)
+residualPlot(mod1_4)
+par(mfrow=c(2,2))
+plot(mod1_4)
+ncvTest(mod1_4)
+summary(mod1_4)
+plot(allEffects(mod1_4))
+```
+
+First we will fit a model using salary as our response and the rest of the variables as the predictors. In our residual plot, we see that as the salary increases, so does the variance. Unforuntately this cone-shape is a sign of non-constant variance. We see a similar pattern in the Residuals vs. Fitted plot. The normal Q-Q plot looks ok, has a few points getting away from the line towards the top. The Scale-Location plot has a positive trend showing. The Residuals vs. Leverage plot looks good, nothing is near Cook's distance.
+
+Our ncvTest p-value is close to 0. So we can reject the null hypothesis that the variance of the residuals is constant, and confirm our graphical inference.
+Even though we know we have NCV in this model, lets see what the summary says. From here we can see that sex is not a significant factor. But what stands out is that the more years of service, the less money they would make in this model, which does not make any sense. So we will keep trying. 
+
+The allEffects plot shows this negative correlation between yrs.service and salary, along with a high variance as years increase.
+
+```{r chunk4_4}
+boxCox(mod1_4)
+mod4_4<-lm(I(1/salary)~rank+discipline+yrs.since.phd+yrs.service+sex,data=Salaries)
+residualPlot(mod4_4)
+ncvTest(mod4_4)
+summary(mod4_4)
+plot(allEffects(mod4_4))
+```
+
+According to boxCox, lambda is close to -1, which tells us to try using the inverse of our repsonse variable. So we try that and check out residuals. We have a very slight u-shaped curve and it looks as if our cone-shape is now just flipped over, but not as bad as before. Our ncvTest p-value is again close to 0. So we can reject the null hypothesis and confirm that we still have NCV. Our summary shows us that our r-squared value is 57%, which we think we can do better than that once we correct the NCV. Our allEffects plots still don't quite make sense. The yrs.service is now corrected (salary increases as does yrs.service) but now it's showing that the higher the rank, the lower the salary. So we know this isn't right. 
+
+```{r chunk4_5}
+Salaries$yrs.service.p1 <- Salaries$yrs.service + 1
+mod2_4<- lm(log(salary) ~ rank+discipline+sex, weights=1/I(yrs.service.p1), data=Salaries)
+residualPlot(mod2_4)
+par(mfrow=c(2,2))
+plot(mod2_4)
+ncvTest(mod2_4)
+anova(mod2_4)
+AIC(mod2_4)
+step(mod2_4)
+avPlots(mod2_4)
+plot(allEffects(mod2_4))
+summary(mod2_4)
+
+mod3_4<- lm(log(salary) ~ rank+discipline, weights=1/I(yrs.service.p1), data=Salaries)
+anova(mod3_4, mod2_4)
+AIC(mod3_4)
+```
+
+In order to make the dataset nicer, we add one to ever observation of yrs.service to get yrs.service.p1. This will allow us to do more with the variable. 
+
+The final model we ended with is using rank + discipline + sex, weighted by yrs.service.p1 to predict log(salary). 
+
+The residual plot looks pretty good. a lot of fitted values are on the same value throughout but it looks like pretty good constant variance. There is a similar pattern in the Residuals vs. Fitted plot. The normal Q-Q plot looks pretty good. The Scale-Location plot looks good, no longer has a trend. The Residuals vs. Leverage plot looks good, nothing is too close to Cook's distance.
+
+Our ncvTest is much better. p-value of 0.94 says we fail to reject the null hypothesis. We do not have enough evidence that this is NCV. So we can assume we have constant variance. 
+
+Anova tells us that each of these variables are significant. The higher the rank, the higher the salary. An applied discipline makes more on average than a theoretical discipline. However, this is also showing that sex matters, meaning if you are male then you make more than if you were female, which is very concerning. 
+
+Our AIC is -268, lower than any other model we tested with log(salary) as the response. Using backwards stepwise to see if we can make any quick changes to our model, it says that doing nothing will give us the lowest AIC, so based on the predictors included in this model, I still shouldn't change anything as it is currently. 
+
+Our avPlots and allEffects plot tell similar stories. Going from Assistant professor to Associate professor is significant, and a nice increase in salary. Going from Associate to Full professor is an even better increase in salary. Teaching in Discipline B (applied) is also an increase in salary from teaching in Discipline A (theoretical). It appears as if there is an increase from going from female to male employee. The whiskers are overlapping a little so lets look to our summary to check these out.
+
+According to our summary, our intercept is 11.18 when everything else is = 0. Since our coefficients are missing female and assitant, we know these are what's being included in our intercept. Our coefficients are giving us valuable insights when using this model. Going from Assistant Professor to ASsociate Professor would result in a 19% increase in average salary. Going from Assistant Professor to Full Professor (which I don't believe can happen) would be a 44% increase in average salary. Teaching an applied discipline instead of a theoretical discipline would be an 11% increase in average salary. And finally, going from female to male would result in an increase of 5% in average salary. Given all of these variables are in the model, all of these variables are significant based on p-value. The fact that sex is considered significant is an issue. Our model r-squared is accounting for 71% of all variance and our model's p-value is significant, so we decide to go with this model. 
+
+Let's see if we can create a better model by removing sex. In mod3_4, all we do is remove sex, and leave everything else the same. 
+
+ANOVA allows us to compare submodels to determine which one is better. mod3_4 is a submodel of mod2_4. Since 'sex' is the only variable we removed, we are basically just comparing what the difference in sex does. Our p-value is significant, so we reject the null hypothesis. We confirm that sex is an important variable. In this instance, simpler is not better, and the model containing sex will be the better model. The F-statistic is telling us that it's better to use variables than to do nothing. We use AIC again to compare the models since our response variables are the same. For mod2_4, our AIC was -268, for mod3_4, our AIC is -263. So it confirms that sex is an important variable and that mod2_4 is the better model to use. 
+
+```{r chunk4_6}
+
+mod2_4<- lm(log(salary) ~ rank+discipline+sex, weights=1/I(yrs.service.p1), data=Salaries)
+mod3_4<- lm(log(salary) ~ rank+discipline, weights=1/I(yrs.service.p1), data=Salaries)
+
+library(doParallel)
+library(foreach)
+library(doRNG) 
+
+mine<-detectCores()
+mine<-min(c(max(c(1,mine/2)),5))
+cl=makeCluster(mine)
+registerDoParallel(cl)
+registerDoRNG()
+getDoParWorkers()
+
+m1 = 0
+m2 = 0
+
+m1 = foreach(i=1:1000,.combine="+",.options.RNG=123)%dopar%{
+  set=sample(1:dim(Salaries)[1],300,replace=FALSE)
+  m2a<-lm(log(salary) ~ rank+discipline+sex, weights=1/I(yrs.service.p1), data=Salaries[set,])
+  sum(((Salaries$salary[-set]-exp(predict(m2a,newdata=Salaries[-set,])))^2))
+  }
+sum(m1)
+
+m2 = foreach(i=1:1000,.combine="+",.options.RNG=123)%dopar%{
+  set=sample(1:dim(Salaries)[1],300,replace=FALSE)
+  m3a<-lm(log(salary) ~ rank+discipline, weights=1/I(yrs.service.p1), data=Salaries[set,])
+  sum(((Salaries$salary[-set]-exp(predict(m3a,newdata=Salaries[-set,])))^2))
+  }
+sum(m2)
+
+stopCluster(cl)
+```
+
+
+We can use random splitting to test the models now to make sure the model including sex will be the better predictor. In this method, we are randomly splitting the data, training it, and then testing it however many times we deisgnate, in this case 1000. Predicting over more and more sets will smooth out the average.
+
+We will access the doParallel library and the foreach library to use a for loop while using parallel processing to speed this up. The detectCores() function allows us to find out how many cores are on the machine. Then we divide this by 2, to ensure we are only using half of the available cores. cl will be my cluster and we will registerDoParallel(cl) so I can use the 4 cores. getDoParWorkers verifies the number of cores we are using. 
+
+Now I will set my seed and run the foreach loop. We use registerDoRNG() to ensure the seed will be passed the same way to parallel processing. This is saying we will run through this loop 1000 times, training the data on 300 of the observations, and testing it on the remainder. Then we will calculate the residual sum of squares by comparing how bad our predictions were. But to do this, we must use exp() for our repsonse variable so we are comparing correctly. 
+
+Again, random splitting confirms that we should use mod2_4. The residual sum of squares is smaller.
+
+And then we must always use stopCluster afterwards to make sure we clean up.
+
+
 
