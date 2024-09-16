@@ -1,0 +1,149 @@
+---
+title: 'BUDA 525: Team 4 Final Project - Problem 4'
+author: "Ryan Antonini, Danny Germain, Joshua Meadows, Josh Nelson, Bill Robertson"
+date: "9/27/2019"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(sqldf)
+library(car)
+library(doParallel)
+head(Salaries)
+summary(Salaries)
+
+Salaries$yrs.service.p1 <- Salaries$yrs.service + 1
+
+```
+
+
+
+```{r}
+plot(Salaries$salary~Salaries$rank)
+
+```
+
+
+```{r}
+sqldf('select "yrs.service" as ys, sum(1) as recs from Salaries where rank = "AsstProf" group by 1 order by 1')
+
+#plot(Salaries$yrs.service.p1~Salaries$salary)
+#plot(Salaries$yrs.service.p1~Salaries$rank)
+#plot(Salaries$yrs.service.p1~Salaries$sex)
+
+```
+
+
+
+
+
+
+```{r}
+library(car)
+
+mod4_1 <- lm(log(salary) ~ rank+discipline+sex, weights=1/I(yrs.service.p1), data=Salaries)
+mod4_2 <- lm(log(salary) ~ rank+discipline+sex+yrs.since.phd, weights=1/I(yrs.service.p1), data=Salaries)
+
+anova(mod4_1,mod4_2)
+
+summary(mod4_1)
+summary(mod4_2)
+
+```
+
+Adding yrs.since.phd does not lead to significant improvement
+
+
+
+
+
+
+
+```{r}
+library(car)
+
+mod4_1 <- lm(log(salary) ~ rank+discipline, weights=1/I(yrs.service.p1), data=Salaries)
+mod4_2 <- lm(log(salary) ~ rank+discipline+sex, weights=1/I(yrs.service.p1), data=Salaries)
+
+anova(mod4_1,mod4_2)
+
+summary(mod4_1)
+summary(mod4_2)
+
+```
+
+
+
+
+```{r}
+
+mod4_4 <- lm(log(salary) ~ rank + discipline + sex, weights=1/I(yrs.service.p1), data=Salaries)
+
+summary(mod4_4)
+
+ncvTest(mod4_4)
+
+par(mfrow=c(2,2))
+plot(mod4_4)
+avPlots(mod4_4)
+plot(allEffects(mod4_4))
+
+
+```
+
+
+
+```{r, cache=TRUE}
+
+
+joshua <- function(x){
+  lm(log(salary) ~ (poly(yrs.service,2)*yrs.since.phd+sex)*discipline+rank,data=x)
+}
+
+bill <- function(x){
+  lm(log(salary) ~ rank+discipline+sex, weights=1/I(yrs.service.p1), data=x)
+}
+
+summary(joshua(Salaries))
+summary(bill(Salaries))
+
+ncvTest(joshua(Salaries))
+ncvTest(bill(Salaries))
+
+AIC(joshua(Salaries))
+AIC(bill(Salaries))
+
+BIC(joshua(Salaries))
+BIC(bill(Salaries))
+
+
+cl<-makeCluster(detectCores()-1)
+registerDoParallel(cl)
+
+j = 0
+b = 0
+
+set.seed(123)
+
+j = foreach(i=1:1000,.combine="+",.options.RNG=623)%dopar%{
+  set=sample(1:dim(Salaries)[1],300,replace=FALSE)
+  M5S1a<-joshua(Salaries[set,])
+  sum(((Salaries$salary[-set]-exp(predict(M5S1a,newdata=Salaries[-set,])))^2))
+  }
+format(j, scientific = FALSE)
+
+b = foreach(i=1:1,.combine="+",.options.RNG=623)%dopar%{
+  set=sample(1:dim(Salaries)[1],300,replace=FALSE)
+  M5S1a<-bill(Salaries[set,])
+  sum(((Salaries$salary[-set]-exp(predict(M5S1a,newdata=Salaries[-set,])))^2))
+  }
+format(b, scientific = FALSE)
+
+stopCluster(cl)
+```

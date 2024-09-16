@@ -1,115 +1,394 @@
 ---
 title: 'BUDA 525: Team 4 Final Project'
 author: "Ryan Antonini, Danny Germain, Joshua Meadows, Josh Nelson, Bill Robertson"
-date: "9/27/2019"
+date: "Due 10/8/2019"
 output: word_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(ISLR)
+library(effects)
+library(car)
+library(doParallel)
+library(carData)
 ```
 
 # Problem 1
+## Bootstrapping
+
+When we want to establish a confidence interval for certain sample statistics, we often use the central limit theorem (CLT) and assume for a sufficient sample size, the statistic will follow a normal distribution. In some cases this assumption may not be correct, or in other instances we may not be able to collect enough samples to establish this normal distribution. In these instances we can use bootstrapping.  The purpose of bootstrapping is to obtain a confidence interval for sample statistics without having to invoke the CLT.
+
+The basic process of bootstrapping is always the same. We treat a sample as if it were the population and then construct numerous quazi-samples the same size as our sample, by randomly choosing members of the sample and then replacing them. The number of quazi-samples we create (k) depends on how fine we want our analysis to be. This method is only valid when our sample is representative of the population.
+
+Bootstrapping is basically resampling with resubstitution. It’s a method to simulate collecting more data.
+
+## Randomization Test
+
+Randomization test is very similar to bootstrapping with some key differences. In Randomization test, we are concerned with hypothesis testing. Once we have established our null hypothesis, we assume it is true and randomize the data accordingly.Then we create an alternative hypothesis that is the exact opposite of the null. For example, suppose we want to see if exam scores are different on the basis of gender. Our alternative hypothesis would be that there is a difference. Our null hypothesis would be that there is no difference in the exam scores based on gender. We establish a distribution where this is the case by taking all of our exam scores and randomly assigning gender to them, making sure that there are the same number of boys and girls as in our original sample. By doing this numerous times (1000 for instance), we can establish the possible values we could get for the average difference in exam scores of boys and girls and the associated probabilities if the null hypothesis were true. We can then calculate the probability of getting a value as or more extreme than the one we observed and this becomes our p-value.
+
+## Difference
+The difference between bootstrap and randomization is that bootstrap is reusing actual sample data, randomization is randomly generating numbers, where each number occurs with equal probability. Randomization is used to simulate the null hypothesis distribution so that we can compare our actual sample to it. Bootstrapping would be better to use when trying to come up with confidence intervals and/or give insights into the data. Where randomization might be better to use when trying to prove or disprove a hypothesis or accusation.
+
+## Client Explanation
+### One Line Version
+
+Bootstrapping is a method we use to simulate gathering multiple samples using only one sample. We use this to create confidence intervals (a range the true answer is likely to be in) for statistics like mean and standard deviation.  We resample our population using replacement and we trust this because the resampling is using our actual data and treating it as though it represents the population.  The larger our data set, the better our inference and predictions.
+
+Randomization is using a chance method to test a hypothesis. We simulate the scenario where our hypothesis is false by randomly selecting values, using their probability. We trust this method because we test against a simulation of our data where there actually is no difference, instead of a theoretical version of what this should look like. The larger our data set, the better our inference and predictions.
+
+### Elevator Speech Version
+
+Classic statistical methods make certain assumptions that can sometimes be problematic. For instance, say you want to find out what the average shoe size of a 6th grade American boy is. The only way to know this for sure is to get the shoe size of every single 6th grade American boy and calculate the average. Because we don’t have the time and money to do this, we might use classic statistics to estimate this value. To do this, we would likely just collect several samples from various schools. These samples would each be a little different; this is called variance. Normally, we use this variance figure out a range we are fairly certain the actual average is based on how many samples we collected. The more samples we collect, the more we can narrow this range down. What if we only had the resources to sample the largest school in America, however and we have good reason to believe it is fairly representative of the rest of America (i.e. there are no big feet walking around).  We have a large pool of data, but we don’t have any variance between samples to leverage classic statistical techniques. Does this mean we can’t use this data to estimate the average?  
+
+Instead of having to throw away all the data in instances like this, we have a method called bootstrapping. Bootstrapping allows us to “pull ourselves up by our bootstraps” so to speak, and find information from data without making some of the heavy assumptions that are normally used in statistics. To do this, we effectively “reshuffle” our data over and over again (often thousands of times) to see what values we could have observed from a sample similar to our own. We then use the variance between these to calculate a range we are fairly sure the actual statistic is in, similar to how we would if we had actually collected several samples.
+
+You may wonder why we haven’t always been able to do this. Before, it would have taken an extremely long time to shuffle our data over and over again, but now thanks to computers we can do this in practically no time at all. Bootstrapping is awesome when used properly, especially considering the ways we now collect data (for instance, it's hard to think of an internet survey as several different samples). That being said, it makes some assumptions of its own that you have to be careful about. For instance if you were trying to find the average salary of an American and you bootstrapped a sample you obtained at a charity gala for donors, you are going to high-ball your estimation. It is important that the data you are using is representative of the population you are trying to estimate. It's also not a good idea to bootstrap a small set of data for a similar reason. This doesn’t mean bootstrapping is unreliable, just make sure that if someone presents you a bootstrap you ask them how big the dataset is, and if the data is representative of the population. So long as the answers are “big” and “yes” bootstrapping is a perfectly acceptable way of making estimations.
 
 
 
 # Problem 2
 
+## Intro
+
+When we are comparing models, there are several methods we can use. Some methods are more simple in that we only look at a calculation based on the specific model output itself and others use sampling methods that compare our prediction between models. The following article will compare six methods by describing how each works, advantages or when to use, and the disadvantages or restrictions of each. 
+
+## R-squared
+
+R-squared, called the coefficient of determination, is used to explain the proportion of the dependent variable that is explainable in predicting the independent (y/response) variable. It gives you an idea of how much variance your model is accounting for.
+  
+$$R^2=\frac{SSReg}{SYY}=1-\frac{RSS}{SYY}$$
+
+In order to calculate R-squared, we need a regression model, which produces a prediction line.  The numerator or “explained variance” is calculated by subtracting each of the predicted values from the actual values, square them, and sum across all data points.  The denominator or “total variance” is calculated similarly, but instead of subtracting the actual value from each predicted value, we subtract the average of the actual values from the predicted value.  We do the division and then subtract from 1 to get the R-squared. The output will be a number between 0 and 1, which can be thought of as a percent of the variation that can be explained by the model.
+
+One advantage of evaluating the R-squared is that it is a simple view to get a feel for a single model. Another advantage is that we can explain the variation.  However, we do not necessarily know if our model needs a transformation in the response/predictor variables or if our sampling is sufficient. R-squared should not be used to compare models with a different number of predictors, because adding predictors can only help the R-squared value or leave it unchanged. This method also should not be used to compare models where the response has been transformed because this number doesn’t account for the scaling that occurs in these instances.
+
+## Anova
+
+Anova or “analysis of variance” or “F-tests” is a way of comparing models that are a subset of one another (I.e. y~x+z vs. y~x). This test produces an F-statistic. If the F-statistic is effectively zero, we conclude the models basically account for the same amount of variance in the residuals, and thus Occam's razor says we should prefer the simpler model. There are a few types of ANOVA test. The most common are type 1 and type 2. The difference between these two is that type 1 depends on the order the predictors are in whereas in type 2, the order does not matter. If the predictors are orthogonal, these two tests will produce the same values. Anova can only be used to compare models when one model is a subset of the other. This means that the parent model must contain everything that the submodel does.
+
+## Akaike Information Criterion (AIC)
+
+$$n \log{\left( \frac{RSS_M}{n}  \right)} + 2(p+1)$$
+
+AIC can be used when models we want to compare have the same response (I.e. sqrt(y) vs. sqrt(y)). With these tests, we prefer the model with the lowest score. These quality estimators are nice because they consider the goodness of fit but add a penalty to models with a higher number of predictors. 
+
+## Bayesian Information Criterion (BIC)
+
+$$n \log{\left( \frac{RSS_M}{n}  \right)} + \log{(n)}(p+1)$$
+
+BIC is similar to AIC in that we can compare models that have the same response (I.e. sqrt(y) vs. sqrt(y)). However, BIC penalizes the number of predictors more harshly, so we pay more attention to this score when we want a simpler model for explanation purposes, or we have cause to believe overfitting might be an issue. Again we want to see models with lower scores.  
+
+## K-Fold Cross-Validation
+
+The K-Fold Cross Validation method works by splitting the data into groups.  Once the groups are established, most commonly in five or ten groupings, we loop through the data one time for each grouping.  We hold out one of the groups for prediction and the rest for modeling.  We then calculate the residual sum of squares (RSS) by subtracting the predicted value from the actual value. We run this process for multiple models and then pick the model with the lowest RSS.
+
+This method has some advantages and disadvantages that will impact whether or not to go this route. We can use it to compare models where the response is any transformation of the same variable (I.e. sqrt(y) vs. log(y)). The issue with using K-Fold is that it can be somewhat time-consuming, which is further compounded by the fact that it works best for large data sets. Consequently, these tests should be used sparingly. It is best to use other methods to narrow down the set of candidate models as much as possible before using these methods.
+
+By leveraging parallel computing, we can somewhat reduce the run time of these methods, but it is important to note that we cannot reduce the time complexity of these algorithms. In general, the higher k is, the more refined your comparison is, but this also increases the run-time.
+
+## Random Splitting
+
+Random Splitting is similar to K-Fold Cross-Validation in many ways. They both also allow for model comparison with any transformation of the same response variable. They also both work well with large datasets.  The main difference is that instead of splitting the entire dataset into sections and only testing once through each of those, we can select a much larger number of random samples.  We loop through the dataset randomly sampling the training and validation sets as many times as we want (i.e. 1000). Random splitting produces a much more refined comparison than k-fold cross-validation, but it also takes much more time. This is another methodology that can greatly benefit from parallel processing.
+
 
 
 # Problem 3
 
-```{r, echo=FALSE}
-library(ISLR)
-library(effects)
-library(car)
-head(Credit)
+We are asked to investigate a set of credit data to see what influences credit card balance. We start by looking at a summary of the data.
+
+```{r chunk3_1, echo=FALSE}
+#head(Credit)
 summary(Credit)
 ```
 
-```{r,echo=FALSE}
-Credit$cardsF <-as.factor(Credit$Cards)
-mod3_1 <- lm(Balance~ID+Income+Limit+Rating+cardsF+Education+Gender+Student+Married+Ethnicity,data=Credit)
+We see that $Balance$ can be zero. We keep this information in mind as we proceed. 
+
+Next, we fit a linear model with $Balance$ as the response and all other variables as predictors to see how we should proceed.
+
+```{r chunk3_2,echo=FALSE}
+mod3_1 <- lm(Balance~ID+Income+Limit+Rating+Cards+Education+Gender+Student+Married+Ethnicity,data=Credit)
 #We start by fitting a model with all predictors to find out how to procede
 summary(mod3_1)
 ```
 
-```{r,echo=FALSE}
-mod3_2 <- lm(Balance~ID+Income+Limit+Rating+cardsF+Education+Student+Married,data=Credit)
+Next, we fit a model that does not include $Gender$ and $Ethnicity$, do to ethical problems surrounding using these variables as predictors.
+
+```{r chunk3_3,echo=FALSE}
+mod3_2 <- lm(Balance~ID+Income+Limit+Rating+Cards+Education+Student+Married,data=Credit)
 #Next we fit a model without Gender and Ethnicity since we don't want to use them, and compare them to the model with all predictors
-summary(mod3_2)
+#summary(mod3_2)
 anova(mod3_1,mod3_2)
 ```
 
-```{r,echo=FALSE}
-mod3_3 <- lm(Balance~Income+Limit+Rating+cardsF+Student,data=Credit)
+The results of our type 2 ANOVA tell us that we can successfully exclude $Gender$ and $Ethnicity$ without reducing the quality of our model. Next, we see if there are any other variables we can exclude based on AIC.
+
+```{r chunk3_4,echo=FALSE}
+mod3_3 <- step(mod3_2)
 summary(mod3_3)
 anova(mod3_1,mod3_3)
-#testing to see if we need Education and Married
+#testing to see what we can drop
 ```
 
-```{r}
+We see that based on AIC and type 2  ANOVA we can use only the predictors $Cards$, $Rating$, $Limit$, $Student$, and $Income$.
+
+Next, we run diagnostics on this model that uses only 5 predictors.
+
+
+```{r chunk3_5, echo=FALSE }
+ncvTest(mod3_3)
+par(mfrow=c(2,2))
 plot(mod3_3)
-avPlots(mod3_3)
-plot(allEffects(mod3_3))
+#avPlots(mod3_3)
+#plot(allEffects(mod3_3))
 #Running Diagnostics
 ```
 
-There is some serious NCV that needs delt with, coming from entries where Balance=0
+The results of our NCV test and the residual plot tell us we have NCV. By inspection, we see that this is possibly due to values where $Balance$ is zero. Next, we exclude these values to see if we can get better results.
 
-```{r}
+
+```{r chunk3_6, echo=FALSE}
 Credit2<- Credit[Credit$Balance!=0,]
-mod3_4 <- lm(Balance~Income+Limit+cardsF+Student,data=Credit2)
+mod3_4 <- lm(Balance~Income+Limit+Rating+Cards+Student,data=Credit2)
 summary(mod3_4)
 ```
 
-```{r}
-plot(mod3_4)
-avPlots(mod3_4)
-plot(allEffects(mod3_4))
+Notice that our R-squared value is 0.998. We would only expect t an R-squared value this high if we have discovered the results of a mathematical calculation. Upon further reflection, we see in the help file for this data set that this is a simulated dataset, so we have likely found something very close to the formula used to create the non-zero values in this dataset.
+
+```{r chunk3_7, echo=FALSE}
 ncvTest(mod3_4)
+par(mfrow=c(2,2))
+plot(mod3_4)
+#avPlots(mod3_4)
+```
+
+```{r chunk3_7_2,echo=FALSE, fig.height=12,fig.width=12 }
+plot(allEffects(mod3_4))
 #Running Diagnostics
 ```
 
-By removing the 90 cases where balance is zero, we can do an extremely good job at prediciting balance with only 4 predictors. Next, we create a new variable that reports whether or not the person has a balance, and use this variable as a response.
+We notice that $Student$ has a profound effect on $Balance$, with students on average having about a $500 higher balance compared to non-students, when everything else is accounted for. 
 
-```{r}
-library(car)
+Holding all else constant, the following trends are significant at a 0.01 alpha level: 
+*For each additional credit card that a person has, their balance goes up, on average, about $25
+*For each additional $10,000 a person makes, their balance goes down about $10
+*For each additional dollar that a person’s credit limit goes up, their Balance increases $0.34
+
+
+## Dealing with zero balance
+
+There are 90 values where $Balance$ is zero, which is nearly a fourth of our data. In this section, we will try to find if there are factors that affect whether or not the balance is zero. This section reflects work that was done before we learned that we could exclude zero balance from our analysis and should be thought of as a “bonus section.”
+
+ We create a new variable as our response which takes the value 1 if the person has a balance, and 0 if they do not have a balance. We then create a model that test the 5 relevant predictors above and then we use AIC values to remove unnecessary predictors.
+
+
+```{r chunk3_8, echo=FALSE}
 Credit3<-Credit
 Credit3$BalanceF<- as.numeric(Credit3$Balance>0)
-mod3_5<- lm(BalanceF~Limit+Student+Rating+cardsF+Age+Education+Gender+Married+Ethnicity+Income+ID,data=Credit3)
+mod3_5<- step(lm(BalanceF~Limit+Student+Rating+Cards+Education+Income,data=Credit3))
 summary(mod3_5)
-Anova(mod3_5,type=2)
-mod3_6<-lm(BalanceF~Limit+Student+Income,data=Credit3)
-summary(mod3_6)
 ```
 
-```{r}
-#testing goodness of fit. Needs to be updated to cross-fold validation
-Credit3$Predict <- ifelse(mod3_6$fitted.values >0.5,"1","0")
-mytable <- table(Credit3$BalanceF,Credit3$Predict)
-print(mytable)
-efficiency <- sum(diag(mytable))/sum(mytable)
-efficiency
+We find that we only need the 3 variables $Limit$, $Student$, and $Income$ for this model. Next, we test the interactions between these variables and see if we can remove any interaction terms using AIC.
+
+```{r chunk3_9, echo=FALSE}
+mod3_7<-step(lm(BalanceF~Student*Limit*Income,data=Credit3))
 ```
 
-Model 3_6 predicts correctly 97 percent of the time whether or not the balance is zero. We can now use Model 3_6 to predict whether or not the balance is zero, then predict the value of the balance, when appropriate, using Model 3_4. (This method can be further improved by using a generalized linear model with a binomial distribution instead of a linear one but that is outside the scope of this class).
+We see that we do not need the interaction between all 3 variables, and we can just use the pairwise interactions.
+
+Notice that what we have done in this section falls outside the normal use of linear regression. We are using the predictors to generate a continuous response, even though our response can only have values zero or one in reality. We must now test whether our model will actually allow us to predict whether or not a person has a balance. To do this, we will use random-splitting, but instead of concerning ourselves with the RSS of the test set, we will predict if the person has a balance in the following way: if the fitted value of the model is greater than 0.5, we predict the person has a balance, and we predict they do not otherwise. We then calculated the percentage we predict correctly over 1000 randomly selected test sets of size 100, using the rest of the data to fit the model.
+
+
+```{r chunk3_10, echo=FALSE}
+mine<-detectCores()
+mine<-min(c(max(c(1,mine-1)),5))
+cl<-makeCluster(mine)
+registerDoParallel(cl)
+getDoParWorkers()
+library(doRNG)
+library(foreach)
+
+foreach(i=1:1000,.combine="+",.options.RNG=623)%dopar% {
+  set=sample(1:dim(Credit3)[1],300,replace=FALSE)
+	M1<-lm(BalanceF~Student*Limit+Student*Income+Income*Limit,data=Credit3[set,])
+	Predict <- predict(M1,newdata=Credit3[-set,])
+	myPredict<- ifelse(Predict >0.5,"1","0")
+	mytable <- table(Credit3[-set,]$BalanceF,myPredict)
+	eff<-sum(diag(mytable))/sum(mytable)
+	return(eff)
+}
+
+stopCluster(cl)
+```
+
+We see that we predict correctly 97.8% of the time. We could first use this model to predict whether or not the person will have a balance, then predict the balance when appropriate, but instead, we try to use the information we learned to fit a model that effectively does all of this in one go by testing $(Student*Limit*Income)*(log(Rating)+cardsF+Student+Limit+Income)$ as the predictors of $Balance$. We then use AIC to remove unnecessary terms, although this analysis is left out for brevity.
+
+```{r chunk3_11, include=FALSE}
+mod3_8<-step(lm(Balance~(Student*Limit*Income)*(log(Rating)+Cards+Student+Limit+Income),data=Credit3))
+```
+
+```{r chunk3_12, echo=FALSE}
+summary(mod3_8)
+ncvTest(mod3_8)
+par(mfrow=c(2,2))
+plot(mod3_8)
+```
+
+This resulting model is a little tedious to interpret but deals with the NCV, making it a good forecasting model, but not a good model to explain to a client. There are still some interesting trends we can point out in this model, however. For instance student's balances go up \$0.86 for every dollar their limit increases, holding all else constant, while nonstudent's balances go down \$0.61 for every dollar their limit increases. Similarly, student's balances go up as their rating increases, holding all else constant, while nonstudent's balances go as their rating increases.
 
 # Problem 4
 
-```{r}
+The Salaries data in the carData package contains information on academic salaries in 2008 and 2009 in a college in the US. A data dictionary can be found in the help file for the data. This data was collected as part of an on-going effort of the college to monitor salary differences between male and female faculty members. We have been asked to investigate the gender gap in the data, but also what other information that may be relevant to administrators (i.e. salary growth for years of service, discipline based growth, etc). Investigate if there is a gender gap, but also provide insights on other drivers that you may see of salary in the data. Is your model suitable to make offers based on the information provided? Explain your reasoning. Provide insights into any other information you find of interest.
+
+We want to investigate the gender gap in the data as well as provide any other drivers that could influence the gap, and determine whether our model of choice is suitable to make offers.
+
+
+```{r chunk4_1, echo=FALSE}
+library(effects)
 library(carData)
+library(car)
+help(Salaries)
 head(Salaries)
 summary(Salaries)
+dim(Salaries)
 ```
 
-```{r}
-mod4_1<-lm(salary~rank+discipline+yrs.since.phd+yrs.service+sex, data=Salaries)
-summary(mod4_1)
+We have 397 observations with 6 variables. Rank is a factor, with 67 professors being Assistants, 64 being Associate, and 266 are full professors. Discipline is another factor: 181 teach a theoretical discipline, and 216 teach applied. yrs.since.phd has a wide range from 1 year all the way to 56. yrs.service also has a wide range, 0 years (assuming these people's first year was the 08-09 academic calendar year) all the way to 60 years. The 0 could create an issue later on. Sex is a very skewed factor in this data set, 358 are males and only 39 are females. This could create some issues. The nine-month salary is in dollars and ranges from 57,800 to 231,545.
+
+```{r chunk4_2}
+t.test(Salaries$salary[Salaries$sex=="Male"], Salaries$salary[Salaries$sex=="Female"], alternative="greater")
 ```
 
-```{r}
-plot(mod4_1)
-avPlots(mod4_1)
-plot(allEffects(mod4_1))
+The t-test’s null hypothesis is that males make less than or equal to what females make. So the alternative is that males make more than females. the p-value is less than 0.05. Using a hard cut off, we would reject the null hypothesis that males make more than females. the mean of x (males) is 115090.4. the mean for y (females) is 101002.4. But this is just looking at straight averages, and as we saw above, we have way more male observations than female. And we know that there are other variables that might play a role into the conclusion. 
+
+```{r chunk4_3, echo=FALSE}
+mod1_4<-lm(salary~rank+discipline+yrs.since.phd+yrs.service+sex,data=Salaries)
+#residualPlot(mod1_4)
+par(mfrow=c(2,2))
+plot(mod1_4)
+ncvTest(mod1_4)
+summary(mod1_4)
 ```
+
+```{r chunk4_3_2, echo=FALSE,fig.height=12,fig.width=12 }
+
+plot(allEffects(mod1_4))
+```
+
+First we will fit a model using salary as our response and the rest of the variables as the predictors. In our residual plot, we see that as the salary increases, so does the variance. Unfortunately this cone-shape is a sign of non-constant variance. We see a similar pattern in the Residuals vs. Fitted plot. The normal Q-Q plot looks ok, has a few points getting away from the line towards the top. The Scale-Location plot has a positive trend showing. The Residuals vs. Leverage plot looks good, nothing is near a problematic Cook's distance.
+
+Our ncvTest p-value is close to 0. So we can reject the null hypothesis that the variance of the residuals is constant, and confirm our graphical intuition.
+Even though we know we have NCV in this model, lets see what the summary says. From here we can see that sex is not a significant factor. But what stands out is that the more years of service, the less money they would make in this model, which does not make any sense. So we will keep trying. 
+
+The allEffects plot shows this negative correlation between yrs.service and salary, along with a high variance as years increase.
+
+```{r chunk4_4, echo=FALSE}
+#par(mfrow=c(1,2))
+boxCox(mod1_4)
+mod4_4<-lm(I(1/salary)~rank+discipline+yrs.since.phd+yrs.service+sex,data=Salaries)
+#residualPlot(mod4_4)
+ncvTest(mod4_4)
+summary(mod4_4)
+```
+
+```{r chunk4_4_2, echo=FALSE , fig.height=12,fig.width=12}
+plot(allEffects(mod4_4))
+```
+
+According to boxCox, lambda is close to -1, which tells us to try using the inverse of our response variable. So we try that and then check out residuals. We have a very slight u-shaped curve and it looks as if our cone-shape is now just flipped over, but not as bad as before. Our ncvTest p-value is again close to 0. So we can reject the null hypothesis and confirm that we still have NCV. Our allEffects plots still don't quite make sense. Because the response is the reciprocal, this model is extremely difficult to interpret.
+```{r chunk4_5, echo=FALSE}
+Salaries$yrs.service.p1 <- Salaries$yrs.service + 1
+mod2_4<- lm(log(salary) ~ rank+discipline+sex, weights=1/I(yrs.service.p1), data=Salaries)
+#residualPlot(mod2_4)
+par(mfrow=c(2,2))
+plot(mod2_4)
+ncvTest(mod2_4)
+anova(mod2_4)
+AIC(mod2_4)
+step(mod2_4)
+avPlots(mod2_4)
+
+summary(mod2_4)
+
+mod3_4<- lm(log(salary) ~ rank+discipline, weights=1/I(yrs.service.p1), data=Salaries)
+anova(mod3_4, mod2_4)
+AIC(mod3_4)
+```
+
+```{r chunk4_5_2, echo=FALSE, fig.height=12,fig.width=12}
+
+plot(allEffects(mod2_4))
+```
+
+In order to make the dataset nicer, we add one to ever observation of yrs.service to get yrs.service.p1. This will allow us to do more with the variable. 
+
+The final model we ended with is using rank + discipline + sex, weighted by 1/yrs.service.p1 to predict log(salary). We choose this weight because there are numerous factors that affect variance in pay as you work a position longer.
+
+The residual plot looks pretty good; a lot of fitted values are on the same value throughout but it looks like pretty constant variance. There is a similar pattern in the Residuals vs. Fitted plot. The normal Q-Q plot looks pretty good. The Scale-Location plot looks good, no longer has a trend. The Residuals vs. Leverage plot looks good, nothing is too close to a problematic Cook's distance.
+
+Our ncvTest is much better. p-value of 0.94 says we fail to reject the null hypothesis. We do not have enough evidence that this is NCV. So we can assume we have constant variance. 
+
+Anova tells us that each of these variables are significant. The higher the rank, the higher the salary. An applied discipline makes more on average than a theoretical discipline. However, this is also showing that sex matters, meaning if you are male then you make more than if you were female, which is very concerning. 
+
+Our AIC is -268, lower than any other model we tested with log(salary) as the response. Using backwards stepwise to see if we can make any quick changes to our model, it says that doing nothing will give us the lowest AIC, so based on the predictors included in this model, I still shouldn't change anything. 
+
+Our avPlots and allEffects plot tell similar stories. Going from Assistant professor to Associate professor is significant, and a nice increase in salary. Going from Associate to Full professor is an even better increase in salary. Teaching in Discipline B (applied) is also an increase in salary from teaching in Discipline A (theoretical). It appears as if there is an increase from going from female to male employees. The whiskers are overlapping a little so let's look to our summary to check these out.
+
+According to our summary, our intercept is 11.18 when everything else is equal to 0. Since our coefficients are missing female and assistant, we know these are what's being included in our intercept. Our coefficients are giving us valuable insights when using this model. Going from Assistant Professor to Associate Professor would result in a 19% increase in average salary. Going from Assistant Professor to Full Professor (which I don't believe can happen) would be a 44% increase in average salary. Teaching an applied discipline instead of a theoretical discipline would be an 11% increase in average salary. And finally, going from female to male would result in an increase of 5% in average salary. Given all of these variables are in the model, all of these variables are significant based on p-value. The fact that sex is considered significant is an issue. Our model r-squared is accounting for 71% of all variance and our model's p-value is significant, so we decide to go with this model. 
+
+Let's see if we can create a better model by removing sex. In mod3_4, all we do is remove sex, and leave everything else the same. 
+
+ANOVA allows us to compare submodels to determine which one is better. mod3_4 is a submodel of mod2_4. Since 'sex' is the only variable we removed, we are basically just comparing what the difference in sex does. Our p-value is significant at .05, so we reject the null hypothesis, but it is very close and would have failed at .001. We confirm that sex is an important variable. In this instance, simpler is not better, and the model containing sex will be the better model. The F-statistic is telling us that it's better to use variables than to do nothing. We use AIC again to compare the models since our response variables are the same. For mod2_4, our AIC was -268, for mod3_4, our AIC is -263. So it confirms that sex is an important variable and that mod2_4 is the better model to use. 
+
+```{r chunk4_6, echo=FALSE, cache=TRUE}
+
+mod2_4<- lm(log(salary) ~ rank+discipline+sex, weights=1/I(yrs.service.p1), data=Salaries)
+mod3_4<- lm(log(salary) ~ rank+discipline, weights=1/I(yrs.service.p1), data=Salaries)
+
+library(doParallel)
+library(foreach)
+library(doRNG) 
+
+mine<-detectCores()
+mine<-min(c(max(c(1,mine/2)),5))
+cl=makeCluster(mine)
+registerDoParallel(cl)
+registerDoRNG()
+getDoParWorkers()
+
+m1 = 0
+m2 = 0
+
+m1 = foreach(i=1:1000,.combine="+",.options.RNG=123)%dopar%{
+  set=sample(1:dim(Salaries)[1],300,replace=FALSE)
+  m2a<-lm(log(salary) ~ rank+discipline+sex, weights=1/I(yrs.service.p1), data=Salaries[set,])
+  sum(((Salaries$salary[-set]-exp(predict(m2a,newdata=Salaries[-set,])))^2))
+  }
+sum(m1)
+
+m2 = foreach(i=1:1000,.combine="+",.options.RNG=123)%dopar%{
+  set=sample(1:dim(Salaries)[1],300,replace=FALSE)
+  m3a<-lm(log(salary) ~ rank+discipline, weights=1/I(yrs.service.p1), data=Salaries[set,])
+  sum(((Salaries$salary[-set]-exp(predict(m3a,newdata=Salaries[-set,])))^2))
+  }
+sum(m2)
+
+stopCluster(cl)
+```
+
+
+We can use random splitting to test the models now to make sure the model including sex will be the better predictor. In this method, we are randomly splitting the data, training it, and then testing it however many times we designate, in this case 1000. Predicting over more and more sets will smooth out the average.
+
+We will access the doParallel library and the foreach library to use a for loop while using parallel processing to speed this up. The detectCores() function allows us to find out how many cores are on the machine. Then we divide this by 2, to ensure we are only using half of the available cores. cl will be my cluster and we will registerDoParallel(cl) so I can use the 4 cores. getDoParWorkers verifies the number of cores we are using. 
+
+Now I will set my seed and run the foreach loop. We use registerDoRNG() to ensure the seed will be passed the same way to parallel processing. This is saying we will run through this loop 1000 times, training the data on 300 of the observations, and testing it on the remainder. Then we will calculate the residual sum of squares by comparing how bad our predictions were. But to do this, we must use exp() for our response variable so we are comparing correctly. 
+
+Again, random splitting confirms that we should use mod2_4. The residual sum of squares is smaller.
+
+And then we must always use stopCluster afterwards to make sure we clean up. 
+
+Using this particular model based on this sample, we can see the changes in salary based on rank, discipline that’s being taught, and sex. There were some interesting things to note about the data. There are no associate professors with more than 6 years of service. We attributed that to the rules of tenure, where typically after year 5, you’re either fired or awarded tenure. In this specific dataset, there was only 1 person with 6 years, and only 3 people with 5 years. However, a lot of the variance came within the associate professor rank. A variable that we thought would be helpful if included would be the years in current rank. Instead of using years of service, we could know how long each person has been in their current rank and use that as a better predictor for each rank’s salary. This would help with predicting what promotion offers should be. One big issue with the dataset used is that we had 358 male observations, and only 39 female observations. We believe this disparity between the two sample sizes is helping cause that “gender gap” in salary that appeared in our model. We are only as good as the data we have available. If the gender observations were closer in size, we think that gender gap would shrink or not even exist possibly. And since we are only as good as our data, our model is only as good as our data. Therefore, we do not think this is a suitable model to propose offers given the dataset available. 
+
+
+

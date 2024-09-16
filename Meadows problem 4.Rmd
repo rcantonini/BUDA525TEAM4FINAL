@@ -1,0 +1,127 @@
+---
+title: "Meadows Problem 4"
+author: "Joshua Meadows"
+date: "10/6/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ISLR)
+library(effects)
+library(car)
+library(carData)
+library(Hmisc)
+library(alr4)
+library(effects)
+library(foreach)
+library(doRNG)
+library(doParallel)
+library(splines)
+```
+
+```{r}
+head(Salaries)
+summary(Salaries)
+```
+
+```{r}
+mod4_1<-lm(salary~rank+discipline+yrs.since.phd+yrs.service+sex, data=Salaries)
+summary(mod4_1)
+ncvTest(mod4_1)
+boxCox(mod4_1)
+```
+
+
+```{r}
+Salaries$salaryI<-yjPower(Salaries$salary, -1) #takes the inverse of y
+mod4_2<-lm(salaryI~rank+discipline+yrs.since.phd+yrs.service+sex, data=Salaries)
+summary(mod4_2)
+ncvTest(mod4_2)
+plot(mod4_2)
+step(mod4_2)
+
+```
+
+```{r}
+Salaries$salaryI<-yjPower(Salaries$salary, -1) #takes the inverse of y
+mod4_3<-step(lm(salaryI~rank*discipline*yrs.service*sex, data=Salaries))
+summary(mod4_3)
+ncvTest(mod4_3)
+plot(mod4_3)
+avPlots(mod4_3)
+plot(allEffects(mod4_3))
+```
+
+```{r}
+mod4_4<-step(lm(yjPower(salary, -1)~(rank+sex+poly(yrs.service,2))*discipline,data=Salaries))
+par(mfrow=c(2,2))
+summary(mod4_4)
+ncvTest(mod4_4)
+plot(mod4_4)
+avPlots(mod4_4)
+plot(allEffects(mod4_4))
+```
+
+```{r,fig.height=8,fig.width=8, echo=FALSE}
+myvar<-allEffects(mod4_4)
+```
+
+```{r,fig.height=8,fig.width=8, echo=FALSE}
+fit<-myvar$`sex:discipline`$fit
+ub<-myvar$`sex:discipline`$upper
+lb<-myvar$`sex:discipline`$lower
+x<-myvar$`sex:discipline`$x
+mydat<-data.frame(fit=fit,sex=as.numeric(x$sex!="Female"),sex2=x$sex,discipline=x$discipline,lb=lb,up=ub)
+plot(mydat$sex,I(1/mydat$fit),col=mydat$discipline,ylab = "salary",xlab="sex")
+
+for (i in unique(mydat$discipline)){
+  current<-mydat[mydat$discipline==i,]
+  lines(current$sex,I(1/current$fit),col=current$discipline)
+  arrows(mydat$sex,I(1/(current$lb)),mydat$sex,I(1/(current$up)), angle=90, code=3, lty=1, length=0.05, col=current$discipline)
+}
+legend("topright",legend=unique(mydat$discipline),col=unique(mydat$discipline),lty=1)
+```
+
+```{r}
+mod4_4<-step(lm(log(salary)~(poly(yrs.service,2)*(yrs.since.phd)+sex+rank)*discipline,data=Salaries))
+summary(mod4_4)
+ncvTest(mod4_4)
+plot(mod4_4)
+avPlots(mod4_4)
+plot(allEffects(mod4_4))
+#step(lm((salary)~(yrs.service*yrs.since.phd+sex+rank)*discipline,data=Salaries))
+```
+
+```{r, cahce=TRUE}
+Salaries$yrs.diff<-I(Salaries$yrs.service-Salaries$yrs.since.phd)
+mod1<- function(x){
+  (lm(log(salary)~(poly(yrs.service,2)*yrs.since.phd+sex)*discipline+rank,data=x))
+}
+mod2<- function(x){
+  (lm(salary~(yrs.service*yrs.since.phd+sex+rank)*discipline,data=x))
+}
+
+
+mine<-detectCores()
+mine<-min(c(max(c(1,mine-1)),5))
+cl=makeCluster(mine)
+registerDoParallel(cl)
+foreach(i=1:1000,.combine="+",.options.RNG=623)%dopar%{
+  set=sample(1:dim(Salaries)[1],300,replace=FALSE)
+  M5S1a<-mod1(Salaries[set,])
+  sum(((Salaries$salary[-set]-exp(predict(M5S1a,newdata=Salaries[-set,])))^2))
+  }
+
+
+foreach(i=1:1000,.combine="+",.options.RNG=623)%dopar%{
+  set=sample(1:dim(Salaries)[1],300,replace=FALSE)
+  M5S1a<-mod2(Salaries[set,])
+  sum(((Salaries$salary[-set]-(predict(M5S1a,newdata=Salaries[-set,])))^2))
+  }
+
+stopCluster(cl)
+```
